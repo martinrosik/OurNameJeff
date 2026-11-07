@@ -1,0 +1,20 @@
+{
+  "name": "ResortEmpire.Editor",
+  "rootNamespace": "ResortEmpire.Editor",
+  "references": [
+    "ResortEmpire.Core",
+    "ResortEmpire.Game",
+    "ResortEmpire.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
