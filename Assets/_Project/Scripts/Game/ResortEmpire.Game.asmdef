@@ -1,0 +1,17 @@
+{
+  "name": "ResortEmpire.Game",
+  "rootNamespace": "ResortEmpire.Game",
+  "references": [
+    "ResortEmpire.Core",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
