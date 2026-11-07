@@ -1,0 +1,92 @@
+# Normalize line endings for everything git thinks is text.
+* text=auto
+
+# ---------------------------------------------------------------
+# Code and plain text: always LF in the repo and working copy.
+# ---------------------------------------------------------------
+*.cs        text eol=lf diff=csharp
+*.shader    text eol=lf
+*.hlsl      text eol=lf
+*.cginc     text eol=lf
+*.compute   text eol=lf
+*.uss       text eol=lf
+*.uxml      text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.xml       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.inputactions text eol=lf
+*.asmdef    text eol=lf
+*.asmref    text eol=lf
+
+# ---------------------------------------------------------------
+# Unity YAML: LF + Unity's Smart Merge (UnityYAMLMerge).
+# Each dev registers the merge driver once, see CONTRIBUTING.md.
+# ---------------------------------------------------------------
+*.unity          text eol=lf merge=unityyamlmerge
+*.prefab         text eol=lf merge=unityyamlmerge
+*.asset          text eol=lf merge=unityyamlmerge
+*.meta           text eol=lf merge=unityyamlmerge
+*.mat            text eol=lf merge=unityyamlmerge
+*.anim           text eol=lf merge=unityyamlmerge
+*.controller     text eol=lf merge=unityyamlmerge
+*.overrideController text eol=lf merge=unityyamlmerge
+*.physicMaterial text eol=lf merge=unityyamlmerge
+*.physicsMaterial2D text eol=lf merge=unityyamlmerge
+*.playable       text eol=lf merge=unityyamlmerge
+*.mask           text eol=lf merge=unityyamlmerge
+*.brush          text eol=lf merge=unityyamlmerge
+*.flare          text eol=lf merge=unityyamlmerge
+*.fontsettings   text eol=lf merge=unityyamlmerge
+*.guiskin        text eol=lf merge=unityyamlmerge
+*.giparams       text eol=lf merge=unityyamlmerge
+*.renderTexture  text eol=lf merge=unityyamlmerge
+*.spriteatlas    text eol=lf merge=unityyamlmerge
+*.spriteatlasv2  text eol=lf merge=unityyamlmerge
+*.terrainlayer   text eol=lf merge=unityyamlmerge
+*.mixer          text eol=lf merge=unityyamlmerge
+*.shadervariants text eol=lf merge=unityyamlmerge
+*.preset         text eol=lf merge=unityyamlmerge
+*.scenetemplate  text eol=lf merge=unityyamlmerge
+*.lighting       text eol=lf merge=unityyamlmerge
+
+# ---------------------------------------------------------------
+# Binary assets: Git LFS.
+# ---------------------------------------------------------------
+# Images
+*.png      filter=lfs diff=lfs merge=lfs -text
+*.jpg      filter=lfs diff=lfs merge=lfs -text
+*.jpeg     filter=lfs diff=lfs merge=lfs -text
+*.gif      filter=lfs diff=lfs merge=lfs -text
+*.psd      filter=lfs diff=lfs merge=lfs -text
+*.psb      filter=lfs diff=lfs merge=lfs -text
+*.aseprite filter=lfs diff=lfs merge=lfs -text
+*.ase      filter=lfs diff=lfs merge=lfs -text
+*.tga      filter=lfs diff=lfs merge=lfs -text
+*.tif      filter=lfs diff=lfs merge=lfs -text
+*.tiff     filter=lfs diff=lfs merge=lfs -text
+*.exr      filter=lfs diff=lfs merge=lfs -text
+*.hdr      filter=lfs diff=lfs merge=lfs -text
+*.bmp      filter=lfs diff=lfs merge=lfs -text
+*.webp     filter=lfs diff=lfs merge=lfs -text
+# Audio
+*.wav      filter=lfs diff=lfs merge=lfs -text
+*.mp3      filter=lfs diff=lfs merge=lfs -text
+*.ogg      filter=lfs diff=lfs merge=lfs -text
+*.aif      filter=lfs diff=lfs merge=lfs -text
+*.aiff     filter=lfs diff=lfs merge=lfs -text
+*.flac     filter=lfs diff=lfs merge=lfs -text
+# Fonts
+*.ttf      filter=lfs diff=lfs merge=lfs -text
+*.otf      filter=lfs diff=lfs merge=lfs -text
+# Video
+*.mp4      filter=lfs diff=lfs merge=lfs -text
+*.mov      filter=lfs diff=lfs merge=lfs -text
+*.webm     filter=lfs diff=lfs merge=lfs -text
+# 3D / misc binaries
+*.fbx      filter=lfs diff=lfs merge=lfs -text
+*.blend    filter=lfs diff=lfs merge=lfs -text
+*.zip      filter=lfs diff=lfs merge=lfs -text
+*.pdf      filter=lfs diff=lfs merge=lfs -text
