@@ -1,6 +1,6 @@
-using System;
 using System.Linq;
 using NUnit.Framework;
+using UnityEditor.Compilation;
 
 namespace ResortEmpire.Tests
 {
@@ -12,12 +12,12 @@ namespace ResortEmpire.Tests
         [TestCase("ResortEmpire.Core")]
         [TestCase("ResortEmpire.Game")]
         [TestCase("ResortEmpire.UI")]
-        public void ProjectAssemblyIsLoaded(string assemblyName)
+        public void ProjectAssemblyIsBuiltForThePlayer(string assemblyName)
         {
-            bool loaded = AppDomain.CurrentDomain.GetAssemblies()
-                .Any(a => a.GetName().Name == assemblyName);
+            bool built = CompilationPipeline.GetAssemblies(AssembliesType.PlayerWithoutTestAssemblies)
+                .Any(a => a.name == assemblyName);
 
-            Assert.IsTrue(loaded, $"Assembly '{assemblyName}' is not loaded. Check its .asmdef and that it contains at least one script.");
+            Assert.IsTrue(built, $"Assembly '{assemblyName}' is not part of the player build. Check its .asmdef and that it contains at least one script.");
         }
     }
 }
