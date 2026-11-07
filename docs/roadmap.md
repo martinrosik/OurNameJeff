@@ -13,10 +13,11 @@ for the MVP.
 - `Assets/_Project` layout, assemblies (Core / Game / UI / Editor / Tests), Game scene, smoke tests
 - README, CONTRIBUTING, CLAUDE.md, design conflict log
 
-## Phase 1: Wave simulation core (`ResortEmpire.Core`, no visuals)
+## Phase 1: Wave simulation core (`ResortEmpire.Core`, no visuals) ✅
 
-Get the companion files first: `wave_sim.py`, Energy System Spec, Decision Log, First Session User Story
-Walkthrough, Project rules. Core must match `wave_sim.py` exactly.
+Built from the Build doc. It reproduces the doc's "no intervention" table exactly. How it works, how to tune it,
+and the open assumptions: [simulation.md](simulation.md). Still worth getting the companion files
+(`wave_sim.py`, Energy System Spec, Decision Log, User Story Walkthrough, Project rules) to confirm those assumptions.
 
 - **Config data**: ScriptableObjects for the §4.8 parameter table (`wave_timer`, `service_time`,
   `utilization_empty`, `patience_grace`, floors, rating thresholds, `coins_per_unit`, multipliers, …), needs,

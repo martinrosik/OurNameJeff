@@ -1,0 +1,258 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ed74164d3638164fadf9cf734777c31, type: 3}
+  m_Name: Config_Prototype
+  m_EditorClassIdentifier: ResortEmpire.Core::ResortEmpire.Core.GameConfig
+  wave:
+    waveTimer: 90
+    incomingDuration: 3
+    serviceTime: 12
+    utilizationStaffed: 1
+    utilizationEmpty: 0.33
+    bottleneckThreshold: 4
+    bottleneckHysteresis: 3
+  satisfaction:
+    patienceGrace: 10
+    patienceFloorAfter: 30
+    unitFloor: 0.25
+    waveFloor: 0.4
+    ratingThresholds:
+    - 0.4
+    - 0.55
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1
+  economy:
+    startingCoins: 0
+    coinsPerUnit: 16
+    coinsRatingMultipliers:
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1
+    - 1.2
+    - 1.3
+    startingResortValue: 100
+    resortValueByRating: 050000000a0000000f00000014000000190000001e000000i
+  energy:
+    startingEnergy: 0
+    boostCost: 3
+    speedReductionPct: 0.5
+    boostDuration: 15
+    maxBoostsPerBuildingPerWave: 1
+    dropByRating: 000000000100000002000000030000000500000005000000i
+    rewardedVideoEnergy: 3
+  needs:
+  - need: 0
+    displayName: Rooms
+    satisfactionWeight: 1
+  - need: 1
+    displayName: Drinks
+    satisfactionWeight: 1
+  - need: 2
+    displayName: Food
+    satisfactionWeight: 1
+  - need: 3
+    displayName: Relax
+    satisfactionWeight: 1
+  - need: 4
+    displayName: Ocean View
+    satisfactionWeight: 1.5
+  buildings:
+  - building: 0
+    displayName: Reception
+    need: 0
+    unlockedAtStart: 1
+    staffedAtStart: 1
+    unlockAfterWave: 0
+    unlockCost: 0
+    unlockResortValue: 0
+    levels:
+    - seats: 3
+      cost: 0
+      resortValue: 0
+    - seats: 5
+      cost: 500
+      resortValue: 20
+    - seats: 7
+      cost: 1200
+      resortValue: 40
+  - building: 1
+    displayName: Restaurant
+    need: 2
+    unlockedAtStart: 1
+    staffedAtStart: 0
+    unlockAfterWave: 0
+    unlockCost: 0
+    unlockResortValue: 0
+    levels:
+    - seats: 3
+      cost: 0
+      resortValue: 0
+    - seats: 5
+      cost: 500
+      resortValue: 20
+    - seats: 7
+      cost: 1200
+      resortValue: 40
+  - building: 2
+    displayName: Beach Bar
+    need: 1
+    unlockedAtStart: 1
+    staffedAtStart: 1
+    unlockAfterWave: 0
+    unlockCost: 0
+    unlockResortValue: 0
+    levels:
+    - seats: 3
+      cost: 0
+      resortValue: 0
+    - seats: 5
+      cost: 500
+      resortValue: 20
+    - seats: 7
+      cost: 1200
+      resortValue: 40
+  - building: 3
+    displayName: Pool
+    need: 3
+    unlockedAtStart: 0
+    staffedAtStart: 0
+    unlockAfterWave: 3
+    unlockCost: 1200
+    unlockResortValue: 100
+    levels:
+    - seats: 3
+      cost: 0
+      resortValue: 0
+    - seats: 5
+      cost: 500
+      resortValue: 20
+    - seats: 7
+      cost: 1200
+      resortValue: 40
+  - building: 4
+    displayName: Bungalows
+    need: 4
+    unlockedAtStart: 0
+    staffedAtStart: 0
+    unlockAfterWave: 6
+    unlockCost: 2500
+    unlockResortValue: 150
+    levels:
+    - seats: 3
+      cost: 0
+      resortValue: 0
+    - seats: 5
+      cost: 500
+      resortValue: 20
+    - seats: 7
+      cost: 1200
+      resortValue: 40
+  waves:
+  - guests: 12
+    rooms: 8
+    drinks: 8
+    food: 6
+    relax: 0
+    oceanView: 0
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: No bottleneck; the player learns to read the panel.
+  - guests: 18
+    rooms: 12
+    drinks: 16
+    food: 10
+    relax: 0
+    oceanView: 0
+    rush:
+      enabled: 1
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: 'First bottleneck: everything above ~7, the empty building falls behind. Sudden rush at ~45 s.'
+  - guests: 24
+    rooms: 16
+    drinks: 18
+    food: 14
+    relax: 0
+    oceanView: 0
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: Pressure on two needs, then Pool unlocks.
+  - guests: 26
+    rooms: 16
+    drinks: 18
+    food: 14
+    relax: 8
+    oceanView: 0
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: Relax debut (soft); other needs hold.
+  - guests: 34
+    rooms: 20
+    drinks: 22
+    food: 18
+    relax: 16
+    oceanView: 0
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: First 4-need bottleneck.
+  - guests: 40
+    rooms: 25
+    drinks: 28
+    food: 22
+    relax: 20
+    oceanView: 0
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: Peak before the unlock, then Bungalows unlock.
+  - guests: 42
+    rooms: 25
+    drinks: 28
+    food: 22
+    relax: 20
+    oceanView: 10
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: Ocean View debut (soft, low volume, higher weight); other needs hold.
+  - guests: 52
+    rooms: 31
+    drinks: 35
+    food: 28
+    relax: 25
+    oceanView: 16
+    rush:
+      enabled: 0
+      startTime: 45
+      units: 6
+      duration: 10
+    intendedBeat: Full lineup, prototype finale.
