@@ -42,6 +42,16 @@ git clone https://github.com/martinrosik/OurNameJeff.git
 
 Before your first commit, do the one-time git setup in [CONTRIBUTING.md](CONTRIBUTING.md#one-time-setup).
 
+**No sprites or icons in the scene?** The project was cloned without Git LFS, so the images are only text
+pointers. Unity says so in a dialog when it opens. In the project folder run:
+
+```bash
+git lfs install
+git lfs pull
+```
+
+Then switch back to Unity; it reimports the art by itself.
+
 ## What's in the game now
 
 Sprint "OUR Sprint 2" is split across the team. This part is built:
