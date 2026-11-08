@@ -84,6 +84,9 @@ namespace ResortEmpire.Core
         /// <summary>OUR-35: raised when a wave reaches WAVE_COMPLETE. OUR-40 tells the player.</summary>
         public event Action<WaveResult> WaveCompleted;
 
+        /// <summary>OUR-38 / OUR-39: a need (and its building) changed state during the wave: need, from, to.</summary>
+        public event Action<NeedId, NeedState, NeedState> NeedStateChanged;
+
         /// <summary>OUR-45: a Worker moved from the first building to the second.</summary>
         public event Action<BuildingId, BuildingId> WorkerMoved;
 
@@ -104,7 +107,7 @@ namespace ResortEmpire.Core
 
         /// <summary>
         /// OUR-46 / OUR-47: seconds one seat of a building takes to serve one guest right now
-        /// (serviceTime ÷ utilization: 0.33 s with a Worker, 1 s without, with the prototype config).
+        /// (serviceTime ÷ utilization: 12 s with a Worker, about 36 s without, with the prototype config).
         /// </summary>
         public double GetServiceSeconds(BuildingId building)
         {
@@ -115,6 +118,23 @@ namespace ResortEmpire.Core
         /// <summary>OUR-34: live numbers of a need in the current wave (all zero outside a wave).</summary>
         public NeedStatus GetNeedStatus(NeedId need) =>
             CurrentWave != null ? CurrentWave.GetNeedStatus(need) : new NeedStatus(need, 0, 0, 0, 0, 0);
+
+        /// <summary>
+        /// OUR-38 / OUR-39: state of a need and its building. <see cref="NeedState.Locked"/> when the building isn't on
+        /// the island; <see cref="NeedState.Ok"/> outside a wave.
+        /// </summary>
+        public NeedState GetNeedState(NeedId need)
+        {
+            if (Config.GetBuildingForNeed(need) == null) return NeedState.Locked;
+            return CurrentWave != null ? CurrentWave.GetState(need) : NeedState.Ok;
+        }
+
+        /// <summary>OUR-38 / OUR-39: state of a building (the state of the need it serves).</summary>
+        public NeedState GetBuildingState(BuildingId building)
+        {
+            BuildingRuntime runtime = GetBuilding(building);
+            return runtime == null ? NeedState.Locked : GetNeedState(runtime.Need);
+        }
 
         /// <summary>OUR-33: "Next wave: Rooms 8 · Drinks 8 · Food 6" before Start Wave. Null after the last wave.</summary>
         public WaveForecast GetNextWaveForecast() => HasNextWave ? GetForecast(CompletedWaves) : null;
@@ -162,6 +182,10 @@ namespace ResortEmpire.Core
             // The time up to now was already simulated at the old speeds; the next Tick uses the new ones.
             source.HasWorker = false;
             target.HasWorker = true;
+
+            // OUR-39: "catching up" shows in the same moment as the move (AC2), not on the next tick.
+            if (Phase == GamePhase.WaveActive) CurrentWave?.RefreshStates();
+
             WorkerMoved?.Invoke(from, to);
             return WorkerMoveResult.Moved;
         }
@@ -179,7 +203,9 @@ namespace ResortEmpire.Core
                 GetForecast(CompletedWaves),
                 Config.wave.waveTimer,
                 need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0,
-                GetServiceSpeed);
+                GetServiceSpeed,
+                Config.wave);
+            CurrentWave.StateChanged += (need, from, to) => NeedStateChanged?.Invoke(need, from, to);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;
@@ -217,7 +243,8 @@ namespace ResortEmpire.Core
             // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             CurrentWave.AdvanceTo(WaveTime);
 
-            // OUR-38 / OUR-39: update each need's state (queue growing → BOTTLENECK, catching up → RECOVERING).
+            // OUR-38 / OUR-39: each need's state (queue growing → BOTTLENECK, catching up → RECOVERING) is updated inside
+            // AdvanceTo, at every event and on a 0.25 s grid; NeedStateChanged reports the changes.
             // OUR-41: after 90 s no new guests come (CurrentWave.ArrivalsClosed), but nobody leaves: the queues are
             // still served until they are empty (WR3, WR4). Nothing ends the wave on a timer.
             // OUR-35: once everyone is served, the wave resolves. The guests then walk back to the boat (Game layer)

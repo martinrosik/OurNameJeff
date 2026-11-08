@@ -14,6 +14,15 @@ namespace ResortEmpire.UI
         public static string Building(ResortGame game, BuildingId building) =>
             game.Config.GetBuilding(building)?.displayName ?? building.ToString();
 
+        /// <summary>OUR-38: "! Beach Bar queue growing".</summary>
+        public static string QueueGrowing(ResortGame game, BuildingId building) => $"! {Building(game, building)} queue growing";
+
+        /// <summary>OUR-38: a guest's feedback on a bottleneck, e.g. "Drinks takes a bit too long."</summary>
+        public static string GuestComplaint(ResortGame game, NeedId need) => $"\"{Need(game, need)} takes a bit too long.\"";
+
+        /// <summary>OUR-39: "Beach Bar is catching up".</summary>
+        public static string CatchingUp(ResortGame game, BuildingId building) => $"{Building(game, building)} is catching up";
+
         public static string Status(ResortGame game)
         {
             int wave = game.CurrentWaveIndex + 1;

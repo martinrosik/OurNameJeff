@@ -15,9 +15,11 @@ MonoBehaviour:
   wave:
     incomingDuration: 3
     waveTimer: 90
-    serviceTime: 0.33
+    serviceTime: 12
     utilizationStaffed: 1
     utilizationEmpty: 0.33
+    bottleneckThreshold: 4
+    bottleneckHysteresis: 3
   needs:
   - need: 0
     displayName: Rooms

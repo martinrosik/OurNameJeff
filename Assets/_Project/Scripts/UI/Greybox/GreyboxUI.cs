@@ -12,6 +12,7 @@ namespace ResortEmpire.UI
     /// with S1: the resort status, the next-wave forecast (OUR-33) and Welcome Guests (OUR-27).
     /// OUR-45: tapping a building opens the Worker allocation sheet (<see cref="WorkerAllocationView"/>).
     /// OUR-37: the Wave Needs Panel (<see cref="NeedsPanelView"/>) uses the side area to the right during the wave.
+    /// OUR-38 / OUR-39: building state changes show a short message over the island (<see cref="StateToastView"/>).
     /// The wave-end info (OUR-40) plugs in here later.
     /// UI reads game state and sends player intents; it never changes rules.
     /// </summary>
@@ -28,11 +29,13 @@ namespace ResortEmpire.UI
         private HudView _hud;
         private NeedsPanelView _needs;
         private WorkerAllocationView _workers;
+        private StateToastView _stateToast;
         private IslandView _island;
 
         internal HudView Hud => _hud;
         internal NeedsPanelView Needs => _needs;
         internal WorkerAllocationView Workers => _workers;
+        internal StateToastView StateToast => _stateToast;
         internal ResortGame Game => _game;
 
         /// <summary>The area right of the island, below the top bar (forecast now; needs panel OUR-37 during the wave).</summary>
@@ -83,6 +86,7 @@ namespace ResortEmpire.UI
             if (_game == null) return;
             _hud.Refresh(_game);
             _needs.Refresh(_game);
+            _stateToast.Refresh(_game);
             _workers.Refresh(_game);
         }
 
@@ -130,6 +134,7 @@ namespace ResortEmpire.UI
 
             _hud = new HudView(this, safe, SideArea, IslandArea);
             _needs = new NeedsPanelView(this, SideArea);
+            _stateToast = new StateToastView(IslandArea); // OUR-38 / OUR-39
             _workers = new WorkerAllocationView(this, safe); // last, so it draws over the HUD
         }
     }

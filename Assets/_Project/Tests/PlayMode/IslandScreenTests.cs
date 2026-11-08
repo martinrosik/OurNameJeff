@@ -221,7 +221,7 @@ namespace ResortEmpire.Tests
             GuestCrowdView guests = _island.Guests;
 
             Game.StartWave();
-            Game.Tick(Game.Config.wave.incomingDuration + 11.3); // Rooms unit 0 seated at 11.25 s, served at 11.58 s
+            Game.Tick(Game.Config.wave.incomingDuration + 11.3); // Rooms unit 0 seated at 11.25 s, served at 23.25 s
             yield return null;
             guests.FastForward(20f);
             yield return null;
@@ -232,7 +232,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(1, guests.InsideCount);
             Assert.AreEqual(0, guests.WalkingCount);
 
-            Game.Tick(0.3); // OUR-46: served 0.33 s after sitting down
+            Game.CurrentWave.FinishService(NeedId.Rooms); // OUR-46: served (12 s after sitting down)
             yield return null;
             guests.FastForward(0.1f);
 
@@ -293,7 +293,7 @@ namespace ResortEmpire.Tests
         public IEnumerator OUR37_RowsMatchTheNeedStatus()
         {
             Game.StartWave();
-            Game.Tick(Game.Config.wave.incomingDuration + 50);
+            Game.Tick(Game.Config.wave.incomingDuration + 60); // the first Food guest arrives at 15 s and takes about 36 s without a Worker
             yield return null;
 
             var needs = new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
@@ -387,7 +387,7 @@ namespace ResortEmpire.Tests
             yield return null;
             guests.FastForward(60f);
 
-            // Normally everyone is served by now (0.33 s / 1 s per guest); finish anyone left directly.
+            // Some guests are still being served (12 s / 36 s per guest); finish them directly.
             foreach (NeedId need in new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food })
             {
                 while (Game.CurrentWave.FinishService(need)) { }
@@ -412,6 +412,91 @@ namespace ResortEmpire.Tests
             {
                 Assert.AreEqual(guests.Plan.CountVisits(need), guests.GetDeliveredCount(need), $"Every {need} visit was made.");
             }
+        }
+
+        [UnityTest]
+        public IEnumerator OUR38_OUR39_AnOverloadedBuildingGlowsRedThenGreenWhenAWorkerHelps()
+        {
+            // Build doc numbers: 12 s per guest, Food 20 on the empty Restaurant. The asset is restored afterwards.
+            Game.Config.wave.serviceTime = 12f;
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 20;
+            try
+            {
+                BuildingView restaurant = _island.GetView(BuildingId.Restaurant);
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                yield return null;
+
+                Assert.AreEqual(NeedState.Bottleneck, Game.GetBuildingState(BuildingId.Restaurant));
+                Assert.AreEqual(NeedState.Bottleneck, restaurant.ShownState);
+                Assert.IsTrue(restaurant.ShowsStateGlow, "Red glow around the Restaurant.");
+                Assert.IsFalse(_island.GetView(BuildingId.Reception).ShowsStateGlow, "The Reception keeps up.");
+                Assert.IsTrue(_ui.StateToast.IsVisible);
+                Assert.AreEqual("! Restaurant queue growing", _ui.StateToast.Title);
+                Assert.AreEqual("\"Food takes a bit too long.\"", _ui.StateToast.Quote);
+
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                yield return null;
+
+                Assert.AreEqual(NeedState.Recovering, restaurant.ShownState, "Catching up in the same moment as the move.");
+                Assert.IsTrue(restaurant.ShowsStateGlow, "Green glow: still busy, but getting better.");
+                Assert.AreEqual("Restaurant is catching up", _ui.StateToast.Title);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        /// <summary>
+        /// The whole of wave 1 with the shipped config and the starting Workers, in 0.05 s steps with the guests
+        /// walking in lockstep: when the last guest arrives, when the last one is served, and when the last one is
+        /// back on the boat (the wave end). Logs the timeline as "[Wave 1 timeline] ...".
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Wave1Timeline_ArrivalsServiceAndBoarding()
+        {
+            const float step = 0.05f;
+            GuestCrowdView guests = _island.Guests;
+            NeedId[] needs = { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
+            double staffed = Game.GetServiceSeconds(BuildingId.Reception);
+            double empty = Game.GetServiceSeconds(BuildingId.Restaurant);
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+            Assert.AreEqual(GamePhase.WaveActive, Game.Phase);
+
+            double time = 0, lastArrival = 0, lastStepOff = 0, allServed = -1, lastBoarded = -1;
+            int arrived = 0, steppedOff = 0;
+            while (time < 900 && Game.Phase != GamePhase.WaveComplete)
+            {
+                Game.Tick(step);
+                guests.FastForward(step);
+                _island.Refresh();
+                time += step;
+
+                int nowArrived = needs.Sum(n => Game.GetNeedStatus(n).Arrived);
+                if (nowArrived > arrived) { arrived = nowArrived; lastArrival = time; }
+                if (guests.SpawnedCount > steppedOff) { steppedOff = guests.SpawnedCount; lastStepOff = time; }
+                if (allServed < 0 && Game.Phase == GamePhase.WaveResolving) allServed = Game.LastWaveResult.Duration;
+                if (Game.Phase == GamePhase.WaveComplete) lastBoarded = time;
+            }
+
+            Debug.Log($"[Wave 1 timeline] service with a Worker {staffed:0.##} s, without {empty:0.##} s; " +
+                      $"last unit arrives {lastArrival:0.##} s ({arrived} units); last guest steps off the boat {lastStepOff:0.##} s ({steppedOff} guests); " +
+                      $"everyone served {allServed:0.##} s; last guest back on the boat (wave end) {lastBoarded:0.##} s");
+            yield return null;
+
+            Assert.AreEqual(12, staffed, 1e-4, "Build doc: 12 s per guest with a Worker.");
+            Assert.AreEqual(12 / 0.33, empty, 1e-4, "Build doc: 12 / 0.33 = 36.4 s without.");
+            Assert.AreEqual(22, arrived);
+            Assert.AreEqual(90, lastArrival, step + 1e-6, "Guests stop arriving at 90 s (wave_timer).");
+            Assert.AreEqual(90 + empty, allServed, 0.1, "The last Food guest (90 s) on the empty Restaurant is done 36.4 s later.");
+            Assert.AreEqual(GamePhase.WaveComplete, Game.Phase, "The wave ends once the last guest has boarded.");
+            Assert.Greater(lastBoarded, allServed, "Guests still walk back to the boat after the last service.");
+            Assert.Less(lastBoarded, allServed + 30, "The walk back takes seconds, not minutes.");
         }
     }
 }

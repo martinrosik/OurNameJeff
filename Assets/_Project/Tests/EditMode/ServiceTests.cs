@@ -6,8 +6,8 @@ using ResortEmpire.Editor;
 namespace ResortEmpire.Tests
 {
     /// <summary>
-    /// OUR-46 / OUR-47: buildings serve their seated guests, 0.33 s per guest with a Worker and 1 s without
-    /// (serviceTime 0.33 ÷ utilization 1.0 / 0.33). Wave 1 baseline: Reception and Beach Bar have a Worker, the
+    /// OUR-46 / OUR-47: buildings serve their seated guests, 12 s per guest with a Worker and about 36.4 s without
+    /// (Build doc: serviceTime 12 ÷ utilization 1.0 / 0.33). Wave 1 baseline: Reception and Beach Bar have a Worker, the
     /// Restaurant doesn't; Rooms unit 0 arrives at 11.25 s, Food unit 0 at 15 s.
     /// </summary>
     public class ServiceTests
@@ -32,33 +32,33 @@ namespace ResortEmpire.Tests
         }
 
         [Test]
-        public void ServiceTakesAThirdOfASecondWithAWorkerAndOneSecondWithout()
+        public void ServiceTakes12SecondsWithAWorkerAndAbout36Without()
         {
             var game = new ResortGame(_config);
 
-            Assert.AreEqual(0.33, game.GetServiceSeconds(BuildingId.Reception), 1e-6);
-            Assert.AreEqual(1.0, game.GetServiceSeconds(BuildingId.Restaurant), 1e-6);
+            Assert.AreEqual(12, game.GetServiceSeconds(BuildingId.Reception), 1e-4);
+            Assert.AreEqual(12 / 0.33, game.GetServiceSeconds(BuildingId.Restaurant), 1e-4);
         }
 
         [Test]
-        public void OUR46_AStaffedBuildingServesAGuestIn033Seconds()
+        public void OUR46_AStaffedBuildingServesAGuestIn12Seconds()
         {
             ResortGame game = StartedGame();
 
             game.Tick(11.25);
             Assert.AreEqual(1, game.GetSeatedCount(BuildingId.Reception), "Seated on arrival.");
 
-            game.Tick(0.32);
+            game.Tick(11.99);
             Assert.AreEqual(0, game.GetNeedStatus(NeedId.Rooms).Served);
 
             game.Tick(0.02);
             NeedStatus rooms = game.GetNeedStatus(NeedId.Rooms);
-            Assert.AreEqual(1, rooms.Served, "Served 0.33 s after sitting down.");
-            Assert.AreEqual(0, rooms.Seated, "The guest left its seat.");
+            Assert.AreEqual(1, rooms.Served, "Served 12 s after sitting down.");
+            Assert.AreEqual(1, rooms.Seated, "Its seat is free; only Rooms unit 1 (arrived at 22.5 s) sits there now.");
         }
 
         [Test]
-        public void OUR47_AnEmptyBuildingServesAGuestInOneSecond()
+        public void OUR47_AnEmptyBuildingServesAGuestInAbout36Seconds()
         {
             ResortGame game = StartedGame();
             Assert.IsFalse(game.GetBuilding(BuildingId.Restaurant).HasWorker);
@@ -66,33 +66,33 @@ namespace ResortEmpire.Tests
             game.Tick(15);
             Assert.AreEqual(1, game.GetSeatedCount(BuildingId.Restaurant));
 
-            game.Tick(0.99);
+            game.Tick(36.3);
             Assert.AreEqual(0, game.GetNeedStatus(NeedId.Food).Served);
 
-            game.Tick(0.02);
-            Assert.AreEqual(1, game.GetNeedStatus(NeedId.Food).Served, "Served 1 s after sitting down.");
-            Assert.AreEqual(0, game.GetSeatedCount(BuildingId.Restaurant));
+            game.Tick(0.1);
+            Assert.AreEqual(1, game.GetNeedStatus(NeedId.Food).Served, "Served 12 / 0.33 = 36.36 s after sitting down.");
+            Assert.AreEqual(2, game.GetSeatedCount(BuildingId.Restaurant), "Only Food units 1 and 2 (30 s, 45 s) are still seated.");
         }
 
         [Test]
         public void AWorkerArrivingSpeedsUpGuestsAlreadySeated()
         {
             ResortGame game = StartedGame();
-            game.Tick(15.5); // the Food guest is half done (0.5 s of 1 s)
+            game.Tick(15 + 6 / 0.33); // the Food guest is half done (18.18 s of 36.36 s)
 
-            game.GetBuilding(BuildingId.Restaurant).HasWorker = true; // the rest takes 0.5 × 0.33 = 0.165 s
+            game.GetBuilding(BuildingId.Restaurant).HasWorker = true; // the rest takes half of 12 s = 6 s
 
-            game.Tick(0.16);
+            game.Tick(5.99);
             Assert.AreEqual(0, game.GetNeedStatus(NeedId.Food).Served);
 
-            game.Tick(0.01);
+            game.Tick(0.02);
             Assert.AreEqual(1, game.GetNeedStatus(NeedId.Food).Served);
         }
 
         [Test]
         public void WhenASeatFreesTheFirstInLineSitsDown()
         {
-            _config.wave.waveTimer = 1f; // Food 6 arrives every 1/6 s on the empty Restaurant (1 s per guest, 3 seats)
+            _config.wave.waveTimer = 1f; // Food 6 arrives every 1/6 s on the empty Restaurant (36.36 s per guest, 3 seats)
             ResortGame game = StartedGame();
 
             game.Tick(1.0);
@@ -101,7 +101,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(3, food.Waiting);
             Assert.AreEqual(0, food.Served);
 
-            game.Tick(0.2); // unit 0 (seated at 1/6 s) is done at 7/6 s; unit 3 takes its seat
+            game.Tick(35.6); // unit 0 (seated at 1/6 s) is done at 36.53 s, unit 1 not before 36.70 s; unit 3 takes the seat
             food = game.GetNeedStatus(NeedId.Food);
             Assert.AreEqual(1, food.Served);
             Assert.AreEqual(3, food.Seated);
@@ -117,9 +117,16 @@ namespace ResortEmpire.Tests
             game.Tick(89.9);
             Assert.AreEqual(GamePhase.WaveActive, game.Phase);
 
-            game.Tick(1.5); // the last units arrive at 90 s and need at most 1 s
+            // OUR-35 "within 2 minutes": the last Food guest arrives at 90 s on the empty Restaurant and is served
+            // 36.36 s later, so wave 1 ends at about 126 s, as the Build doc says for a well-handled wave.
+            game.Tick(36);
+            Assert.AreEqual(GamePhase.WaveActive, game.Phase, "The last Food guest is still being served.");
+
+            game.Tick(0.5);
             Assert.AreEqual(GamePhase.WaveResolving, game.Phase);
             Assert.AreEqual(22, game.LastWaveResult.UnitsServed);
+            Assert.AreEqual(90 + 12 / 0.33, game.LastWaveResult.Duration, 0.5);
+            Assert.LessOrEqual(game.LastWaveResult.Duration, 130, "Wave 1 ends within about 2 minutes.");
         }
 
         [Test]
@@ -155,9 +162,10 @@ namespace ResortEmpire.Tests
 
         private static void RunTo(ResortGame game, double waveTime, double step)
         {
+            // Time only runs while the wave is active; once it resolves (everyone served) stop, or this never ends.
             while (game.Phase == GamePhase.WaveActive && game.WaveTime + step <= waveTime) game.Tick(step);
             double rest = waveTime - game.WaveTime;
-            if (rest > 0) game.Tick(rest);
+            if (rest > 0 && game.Phase == GamePhase.WaveActive) game.Tick(rest);
         }
     }
 }

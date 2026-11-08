@@ -44,7 +44,7 @@ when served. A building with a Worker ("W" badge, OUR-48) gets through its guest
 
 ## Open question
 
-The Jira ticket says "(0.33 s)", but the Build doc says 12 s per guest per seat with utilization 1.0 (and 0.33
+The Jira ticket says "(0.33 s)", but the Build doc says 12 s per guest per seat (the config now uses 12 s) with utilization 1.0 (and 0.33
 without a Worker). Keep both as config values (`serviceTime`, `utilization*`), use the Build doc numbers, and see
 [design-conflicts.md](../design-conflicts.md) row 10. The designer decides.
 

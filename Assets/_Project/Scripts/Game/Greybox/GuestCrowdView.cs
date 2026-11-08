@@ -18,14 +18,14 @@ namespace ResortEmpire.Game
     /// <para>
     /// <b>Service (OUR-46 / OUR-47):</b> a guest counts as served when the Core's <see cref="NeedStatus.Served"/>
     /// for that need has passed its unit (units are served first come, first served). A guest also stays inside at
-    /// least the building's service time (<see cref="ResortGame.GetServiceSeconds"/>: 0.33 s with a Worker, 1 s
+    /// least the building's service time (<see cref="ResortGame.GetServiceSeconds"/>: 12 s with a Worker, about 36 s
     /// without), since the walk can make it arrive after the Core has already served its unit.
     /// </para>
     /// <para>
     /// A building's seat squares show the guests who are inside it right now: a square fills when a guest walks in
     /// and empties when it walks out. Guests beyond the building's seats show as small queue squares. They follow
-    /// the walking guests, not the Core's seats: the Core serves a guest in 0.33–1 s, usually before the guest has
-    /// even walked over, so its seat count would leave the squares empty.
+    /// the walking guests, not the Core's seats: the Core seats a unit the moment it arrives, while the guest still
+    /// has to walk over, so its seat count would fill squares before anyone is there.
     /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
