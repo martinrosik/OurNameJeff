@@ -38,5 +38,43 @@ namespace ResortEmpire.UI
                 default: return string.Empty;
             }
         }
+
+        // OUR-37: the Wave Needs Panel.
+        public const string NeedsPanelHint = "Tap a need to move a Worker.";
+
+        public static string WaveTitle(WaveSimulation wave) => $"WAVE {wave.WaveNumber}";
+
+        public static string WaveGuests(WaveSimulation wave) => $"{wave.GuestCount} guests in this wave";
+
+        public static string WaveArrivals(WaveSimulation wave) =>
+            wave.ArrivalsClosed ? "All guests arrived" : "Guests arriving...";
+
+        public static string NeedProgress(ResortGame game, NeedStatus status) =>
+            $"{Need(game, status.Need)}  {status.Served}/{status.Total}";
+
+        public static string NeedStateLabel(NeedState state, bool isPremium)
+        {
+            string label;
+            switch (state)
+            {
+                case NeedState.Bottleneck: label = "Queue growing!"; break;
+                case NeedState.Recovering: label = "Catching up"; break;
+                case NeedState.Satisfied: label = "All served"; break;
+                default: label = "OK"; break;
+            }
+
+            return isPremium ? $"PREMIUM: {label}" : label;
+        }
+
+        public static string BuildingStaffing(BuildingRuntime building) =>
+            $"{building.Definition.displayName}: {(building.HasWorker ? "Worker" : "No Worker (slow)")}";
+
+        /// <summary>"Full" appears only with a Worker: then a queue means the building is too small, not understaffed.</summary>
+        public static string NeedQueue(NeedStatus status, BuildingRuntime building)
+        {
+            string waiting = $"{status.Waiting} waiting";
+            bool isFull = building.HasWorker && status.Seated >= building.Seats;
+            return isFull ? $"Full: {status.Seated}/{building.Seats} seats, {waiting}" : waiting;
+        }
     }
 }

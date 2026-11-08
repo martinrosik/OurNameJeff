@@ -270,6 +270,145 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator OUR37_ThePanelReplacesTheForecastAfterWelcomeGuests()
+        {
+            yield return null;
+            Assert.IsFalse(_ui.Needs.IsVisible, "Before the wave the side area shows the forecast.");
+
+            _ui.Hud.StartWaveButton.onClick.Invoke();
+            yield return null;
+
+            Assert.IsTrue(_ui.Needs.IsVisible, "It opens while the boat comes in.");
+            Assert.IsFalse(_ui.Hud.ForecastVisible);
+
+            Game.Tick(Game.Config.wave.incomingDuration + 1);
+            yield return null;
+
+            Assert.IsTrue(_ui.Needs.IsVisible);
+            Assert.AreEqual("WAVE 1", _ui.Needs.TitleText);
+            Assert.AreEqual(3, _ui.Needs.Rows.Count(row => row.IsVisible), "Rooms, Drinks, Food.");
+        }
+
+        [UnityTest]
+        public IEnumerator OUR37_RowsMatchTheNeedStatus()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 60); // the first Food guest arrives at 15 s and takes about 36 s without a Worker
+            yield return null;
+
+            var needs = new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
+            for (int i = 0; i < needs.Length; i++)
+            {
+                NeedStatus status = Game.GetNeedStatus(needs[i]);
+                NeedRowView row = _ui.Needs.Rows[i];
+                Assert.Greater(status.Served, 0, $"{needs[i]}: someone was served by now.");
+                StringAssert.EndsWith($"{status.Served}/{status.Total}", row.ProgressText);
+                Assert.AreEqual((float)status.Served / status.Total, row.BarFraction, 0.001f);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OUR37_RowsSayWhoHasAWorkerAndWhenSeatsAreFull()
+        {
+            PauseService();
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer);
+            yield return null;
+
+            NeedRowView rooms = _ui.Needs.Rows[0];
+            NeedRowView food = _ui.Needs.Rows[2];
+            int roomsWaiting = Game.GetNeedStatus(NeedId.Rooms).Waiting;
+            int foodWaiting = Game.GetNeedStatus(NeedId.Food).Waiting;
+
+            Assert.AreEqual("Reception: Worker", rooms.StaffingText);
+            Assert.AreEqual($"Full: 3/3 seats, {roomsWaiting} waiting", rooms.QueueText);
+            Assert.AreEqual("Restaurant: No Worker (slow)", food.StaffingText);
+            Assert.AreEqual($"{foodWaiting} waiting", food.QueueText, "Without a Worker the problem is not the size.");
+        }
+
+        [UnityTest]
+        public IEnumerator OUR38_OUR39_TheRowSaysQueueGrowingThenCatchingUp()
+        {
+            // Food 20 on the empty Restaurant turns into a bottleneck. The asset is restored afterwards.
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 20;
+            try
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                yield return null;
+
+                NeedRowView food = _ui.Needs.Rows[2];
+                Assert.AreEqual(NeedState.Bottleneck, Game.GetNeedState(NeedId.Food));
+                Assert.AreEqual("Queue growing!", food.StateText);
+                Assert.AreEqual(GreyboxPalette.Warning, food.StateColor);
+                Assert.AreEqual("OK", _ui.Needs.Rows[0].StateText, "The Reception keeps up.");
+
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                yield return null;
+
+                Assert.AreEqual("Catching up", food.StateText, "Catching up in the same moment as the move.");
+                Assert.AreEqual(GreyboxPalette.WorkerOn, food.StateColor);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OUR37_TheHeaderSaysWhenAllGuestsHaveArrived()
+        {
+            PauseService();
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 30);
+            yield return null;
+            Assert.AreEqual("Guests arriving...", _ui.Needs.ArrivalsText);
+
+            Game.Tick(Game.Config.wave.waveTimer);
+            yield return null;
+            Assert.AreEqual("All guests arrived", _ui.Needs.ArrivalsText);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR37_TappingARowOpensWorkerAllocationForItsBuilding()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 1);
+            yield return null;
+
+            _ui.Needs.Rows[2].Button.onClick.Invoke();
+            yield return null;
+
+            Assert.IsTrue(_ui.Workers.IsOpen);
+            Assert.AreEqual(BuildingId.Restaurant, _ui.Workers.Building);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR37_ThePanelIsHiddenAfterTheWaveAndShowsTheFinalCounts()
+        {
+            GuestCrowdView guests = _island.Guests;
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer + 60);
+            yield return null;
+
+            Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "Everyone is served.");
+            Assert.IsTrue(_ui.Needs.IsVisible, "The final counts stay up while the guests leave.");
+            Assert.AreEqual("Rooms  8/8", _ui.Needs.Rows[0].ProgressText);
+            Assert.AreEqual("Food  6/6", _ui.Needs.Rows[2].ProgressText);
+            Assert.AreEqual("All served", _ui.Needs.Rows[2].StateText);
+
+            guests.FastForward(180f);
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(GamePhase.WaveComplete, Game.Phase);
+            Assert.IsFalse(_ui.Needs.IsVisible);
+        }
+
+        [UnityTest]
         public IEnumerator OUR35_WhenEveryoneIsServedTheGuestsBoardAndTheWaveEnds()
         {
             GuestCrowdView guests = _island.Guests;

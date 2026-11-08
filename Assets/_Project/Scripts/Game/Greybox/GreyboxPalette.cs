@@ -14,6 +14,7 @@ namespace ResortEmpire.Game
         public static readonly Color PanelBlue = new Color(0.86f, 0.95f, 1f);
         public static readonly Color Primary = new Color(0.98f, 0.47f, 0.17f);
         public static readonly Color Warning = new Color(0.90f, 0.25f, 0.22f);
+        public static readonly Color Premium = new Color(1f, 0.90f, 0.62f);
 
         public static readonly Color WorkerOn = new Color(0.18f, 0.70f, 0.38f);
         public static readonly Color WorkerOff = new Color(0.62f, 0.62f, 0.62f);
