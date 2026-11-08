@@ -22,6 +22,8 @@ namespace ResortEmpire.Editor
             {
                 incomingDuration = 3f,
                 waveTimer = 90f, // OUR-34: arrival phase (Build doc §4.8 wave_timer)
+                bottleneckThreshold = 4, // OUR-38: Build doc §4.8 bottleneck_threshold
+                bottleneckHysteresis = 3f, // OUR-38 / OUR-39: Build doc §4.8 bottleneck_hysteresis_s
                 serviceTime = 0.33f, // OUR-46: Jira 0.33 s per guest (Build doc: 12 s, design-conflicts row 10)
                 utilizationStaffed = 1f, // OUR-46
                 utilizationEmpty = 0.33f, // OUR-47: 0.33 s ÷ 0.33 = 1 s per guest without a Worker

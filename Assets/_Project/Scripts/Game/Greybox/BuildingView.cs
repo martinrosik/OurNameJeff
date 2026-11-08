@@ -14,6 +14,8 @@ namespace ResortEmpire.Game
     /// <item><b>OUR-48 Worker</b>: a green "W" badge when a Worker stands here, a grey badge and "No Worker" when not.
     /// The empty building must look unstaffed at a glance (Build doc §4.5).</item>
     /// <item><b>OUR-34 queue</b>: one small dot per guest waiting for a seat, 2 rows of 6, then "+N".</item>
+    /// <item><b>OUR-38 / OUR-39 state</b>: a red glow around the building (and red queue dots) while it is in
+    /// BOTTLENECK, a green glow while it is RECOVERING ("catching up"); nothing when it is calm.</item>
     /// </list>
     /// </summary>
     public sealed class BuildingView : MonoBehaviour
@@ -26,6 +28,9 @@ namespace ResortEmpire.Game
         private const int QueueDotsPerRow = 6;
         private const int QueueRows = 2;
         private const int QueueMaxDots = QueueDotsPerRow * QueueRows;
+        private const int StateGlowSortingOrder = 3;
+        private static readonly Vector2 StateGlowSize = new Vector2(2.75f, 2.5f);
+        private const float StateGlowY = 0.35f;
 
         [SerializeField] private BuildingId building;
 
@@ -50,6 +55,7 @@ namespace ResortEmpire.Game
         private readonly List<SpriteRenderer> _seats = new List<SpriteRenderer>();
         private readonly List<SpriteRenderer> _queueDots = new List<SpriteRenderer>();
         private TextMeshPro _queueOverflow;
+        private SpriteRenderer _stateGlow;
 
         public BuildingId Building => building;
 
@@ -64,6 +70,12 @@ namespace ResortEmpire.Game
 
         /// <summary>Guests shown waiting in front of the building (OUR-34).</summary>
         public int ShownWaiting { get; private set; }
+
+        /// <summary>OUR-38 / OUR-39: the state the building shows (glow colour).</summary>
+        public NeedState ShownState { get; private set; } = NeedState.Ok;
+
+        /// <summary>Whether the red or green state glow is visible.</summary>
+        public bool ShowsStateGlow => _stateGlow != null && _stateGlow.enabled;
 
         /// <summary>Whether the "W" badge is shown (OUR-48).</summary>
         public bool ShowsWorker { get; private set; }
@@ -104,9 +116,45 @@ namespace ResortEmpire.Game
             body.color = GreyboxPalette.ForBuilding(building);
             nameLabel.text = runtime.Definition.displayName;
 
+            ShowState(game.GetBuildingState(building));
             ShowSeats(runtime.Seats, seated ?? game.GetSeatedCount(building));
             ShowQueue(waiting ?? game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
+        }
+
+        /// <summary>OUR-38 / OUR-39: red glow for BOTTLENECK, green for RECOVERING, none otherwise.</summary>
+        private void ShowState(NeedState state)
+        {
+            bool changed = state != ShownState;
+            ShownState = state;
+
+            bool glow = state == NeedState.Bottleneck || state == NeedState.Recovering;
+            if (glow && _stateGlow == null) _stateGlow = CreateStateGlow();
+            if (_stateGlow != null)
+            {
+                _stateGlow.enabled = glow;
+                if (glow) _stateGlow.color = state == NeedState.Bottleneck ? GreyboxPalette.BottleneckGlow : GreyboxPalette.RecoveringGlow;
+            }
+
+            if (changed)
+            {
+                Color dots = state == NeedState.Bottleneck ? GreyboxPalette.Warning : GreyboxPalette.Guest;
+                foreach (SpriteRenderer dot in _queueDots) dot.color = dots;
+                if (_queueOverflow != null) _queueOverflow.color = dots;
+            }
+        }
+
+        private SpriteRenderer CreateStateGlow()
+        {
+            var go = new GameObject("StateGlow");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, StateGlowY, 0f);
+            var glow = go.AddComponent<SpriteRenderer>();
+            glow.sprite = body.sprite; // the rounded plate sprite, sliced to a soft rounded rectangle
+            glow.drawMode = SpriteDrawMode.Sliced;
+            glow.size = StateGlowSize;
+            glow.sortingOrder = StateGlowSortingOrder;
+            return glow;
         }
 
         private void ShowQueue(int waiting)
@@ -122,7 +170,7 @@ namespace ResortEmpire.Game
                 go.transform.localScale = new Vector3(QueueDotSize, QueueDotSize, 1f);
                 var dot = go.AddComponent<SpriteRenderer>();
                 dot.sprite = seatSprite;
-                dot.color = GreyboxPalette.Guest;
+                dot.color = ShownState == NeedState.Bottleneck ? GreyboxPalette.Warning : GreyboxPalette.Guest;
                 dot.sortingOrder = SeatSortingOrder;
                 _queueDots.Add(dot);
             }

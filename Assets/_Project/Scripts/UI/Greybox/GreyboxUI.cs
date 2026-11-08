@@ -11,6 +11,7 @@ namespace ResortEmpire.UI
     /// Root of the greybox UI. Builds the canvas at runtime (landscape, 852×393 reference like the Figma frames)
     /// with S1: the resort status, the next-wave forecast (OUR-33) and Welcome Guests (OUR-27).
     /// OUR-45: tapping a building opens the Worker allocation sheet (<see cref="WorkerAllocationView"/>).
+    /// OUR-38 / OUR-39: building state changes show a short message over the island (<see cref="StateToastView"/>).
     /// The Wave Needs Panel (OUR-37) and the wave-end info (OUR-40) plug in here later;
     /// the side area to the right is reserved for the needs panel during the wave.
     /// UI reads game state and sends player intents; it never changes rules.
@@ -27,10 +28,12 @@ namespace ResortEmpire.UI
         private ResortGame _game;
         private HudView _hud;
         private WorkerAllocationView _workers;
+        private StateToastView _stateToast;
         private IslandView _island;
 
         internal HudView Hud => _hud;
         internal WorkerAllocationView Workers => _workers;
+        internal StateToastView StateToast => _stateToast;
         internal ResortGame Game => _game;
 
         /// <summary>The area right of the island, below the top bar (forecast now; needs panel OUR-37 during the wave).</summary>
@@ -80,6 +83,7 @@ namespace ResortEmpire.UI
         {
             if (_game == null) return;
             _hud.Refresh(_game);
+            _stateToast.Refresh(_game);
             _workers.Refresh(_game);
         }
 
@@ -126,6 +130,7 @@ namespace ResortEmpire.UI
             IslandArea.Fill(Margin, SidePanelWidth + Margin * 2, TopBarHeight, Margin);
 
             _hud = new HudView(this, safe, SideArea, IslandArea);
+            _stateToast = new StateToastView(IslandArea); // OUR-38 / OUR-39
             _workers = new WorkerAllocationView(this, safe); // last, so it draws over the HUD
         }
     }

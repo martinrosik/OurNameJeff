@@ -18,6 +18,8 @@ MonoBehaviour:
     serviceTime: 0.33
     utilizationStaffed: 1
     utilizationEmpty: 0.33
+    bottleneckThreshold: 4
+    bottleneckHysteresis: 3
   needs:
   - need: 0
     displayName: Rooms

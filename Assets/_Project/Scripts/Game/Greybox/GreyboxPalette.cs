@@ -20,6 +20,10 @@ namespace ResortEmpire.Game
         public static readonly Color Guest = new Color(0.25f, 0.20f, 0.45f);
         public static readonly Color SeatFree = new Color(1f, 1f, 1f, 0.85f);
 
+        // OUR-38 / OUR-39: building state glows (the Build doc names no colours; red = queue growing, green = catching up).
+        public static readonly Color BottleneckGlow = new Color(0.90f, 0.25f, 0.22f, 0.55f);
+        public static readonly Color RecoveringGlow = new Color(0.18f, 0.70f, 0.38f, 0.5f);
+
         public static Color ForBuilding(BuildingId building)
         {
             switch (building)

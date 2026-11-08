@@ -305,5 +305,41 @@ namespace ResortEmpire.Tests
                 Assert.AreEqual(guests.Plan.CountVisits(need), guests.GetDeliveredCount(need), $"Every {need} visit was made.");
             }
         }
+
+        [UnityTest]
+        public IEnumerator OUR38_OUR39_AnOverloadedBuildingGlowsRedThenGreenWhenAWorkerHelps()
+        {
+            // Build doc numbers: 12 s per guest, Food 20 on the empty Restaurant. The asset is restored afterwards.
+            Game.Config.wave.serviceTime = 12f;
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 20;
+            try
+            {
+                BuildingView restaurant = _island.GetView(BuildingId.Restaurant);
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                yield return null;
+
+                Assert.AreEqual(NeedState.Bottleneck, Game.GetBuildingState(BuildingId.Restaurant));
+                Assert.AreEqual(NeedState.Bottleneck, restaurant.ShownState);
+                Assert.IsTrue(restaurant.ShowsStateGlow, "Red glow around the Restaurant.");
+                Assert.IsFalse(_island.GetView(BuildingId.Reception).ShowsStateGlow, "The Reception keeps up.");
+                Assert.IsTrue(_ui.StateToast.IsVisible);
+                Assert.AreEqual("! Restaurant queue growing", _ui.StateToast.Title);
+                Assert.AreEqual("\"Food takes a bit too long.\"", _ui.StateToast.Quote);
+
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                yield return null;
+
+                Assert.AreEqual(NeedState.Recovering, restaurant.ShownState, "Catching up in the same moment as the move.");
+                Assert.IsTrue(restaurant.ShowsStateGlow, "Green glow: still busy, but getting better.");
+                Assert.AreEqual("Restaurant is catching up", _ui.StateToast.Title);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
     }
 }

@@ -25,15 +25,28 @@ namespace ResortEmpire.Core
     /// Arrivals and service ends are processed as one time-ordered sequence, so big and small steps give the same
     /// result.
     /// </para>
+    /// <para>
+    /// <b>OUR-38 / OUR-39 need states:</b> each need has a <see cref="NeedState"/> (Build doc §4.4). States are
+    /// checked at every event and every <see cref="StateCheckInterval"/> s of wave time (a fixed grid, never at
+    /// frame times), so they don't depend on the frame rate either, and right after a Worker move
+    /// (<see cref="RefreshStates"/>).
+    /// </para>
     /// </summary>
     public sealed class WaveSimulation
     {
         /// <summary>Tolerance for comparing accumulated frame times against the schedule.</summary>
         private const double TimeEpsilon = 1e-6;
 
+        /// <summary>States are re-checked at least this often (wave time), besides every event.</summary>
+        public const double StateCheckInterval = 0.25;
+
         private readonly Dictionary<NeedId, NeedQueue> _needs = new Dictionary<NeedId, NeedQueue>();
         private readonly List<NeedQueue> _needList = new List<NeedQueue>();
         private readonly Func<NeedId, double> _serviceSpeedForNeed;
+        private readonly int _bottleneckThreshold;
+        private readonly double _bottleneckHysteresis;
+        private double _nextStateCheck;
+        private double _lastStateCheck;
 
         /// <param name="forecast">Demand for the needs on the island (already filtered by WR9).</param>
         /// <param name="waveTimer">Length of the arrival phase in seconds.</param>
@@ -42,14 +55,26 @@ namespace ResortEmpire.Core
         /// OUR-46 / OUR-47: progress per second of one seated unit of a need (utilization ÷ serviceTime). Read on every
         /// step. Null: nobody is served automatically (only <see cref="FinishService"/>).
         /// </param>
+        /// <param name="settings">
+        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis. Null uses the Build doc defaults of
+        /// <see cref="WaveSettings"/>.
+        /// </param>
         public WaveSimulation(
-            WaveForecast forecast, double waveTimer, Func<NeedId, int> seatsForNeed, Func<NeedId, double> serviceSpeedForNeed = null)
+            WaveForecast forecast,
+            double waveTimer,
+            Func<NeedId, int> seatsForNeed,
+            Func<NeedId, double> serviceSpeedForNeed = null,
+            WaveSettings settings = null)
         {
             if (forecast == null) throw new ArgumentNullException(nameof(forecast));
             if (seatsForNeed == null) throw new ArgumentNullException(nameof(seatsForNeed));
             if (waveTimer <= 0) throw new ArgumentOutOfRangeException(nameof(waveTimer), "The arrival phase must be longer than 0 s.");
 
             _serviceSpeedForNeed = serviceSpeedForNeed;
+            settings = settings ?? new WaveSettings();
+            _bottleneckThreshold = Math.Max(1, settings.bottleneckThreshold);
+            _bottleneckHysteresis = Math.Max(TimeEpsilon, settings.bottleneckHysteresis);
+            _nextStateCheck = StateCheckInterval;
             WaveIndex = forecast.WaveIndex;
             GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
@@ -59,6 +84,30 @@ namespace ResortEmpire.Core
                 _needs[demand.Need] = queue;
                 _needList.Add(queue);
             }
+
+            ReadSpeeds();
+        }
+
+        /// <summary>OUR-38 / OUR-39: a need changed state (need, from, to).</summary>
+        public event Action<NeedId, NeedState, NeedState> StateChanged;
+
+        /// <summary>
+        /// OUR-38 / OUR-39: the need's state. <see cref="NeedState.Locked"/> for a need that isn't in this wave
+        /// (its building isn't on the island).
+        /// </summary>
+        public NeedState GetState(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.State : NeedState.Locked;
+
+        /// <summary>Seconds of wave time the need has spent in BOTTLENECK (AC6 recommends the upgrade for the longest one).</summary>
+        public double GetBottleneckSeconds(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.BottleneckSeconds : 0;
+
+        /// <summary>
+        /// OUR-39: re-reads the service speeds and re-checks every state now. Called right after a Worker move, so
+        /// "catching up" shows in the same moment as the player's decision (AC2), not on the next tick.
+        /// </summary>
+        public void RefreshStates()
+        {
+            ReadSpeeds();
+            CheckStates();
         }
 
         public int WaveIndex { get; }
@@ -137,7 +186,12 @@ namespace ResortEmpire.Core
         /// <para><see cref="AdvanceTo"/> does this when a unit's progress reaches 1; tests may call it directly.</para>
         /// </summary>
         /// <returns>False when nobody of that need is seated.</returns>
-        internal bool FinishService(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) && queue.FinishService();
+        internal bool FinishService(NeedId need)
+        {
+            if (!_needs.TryGetValue(need, out NeedQueue queue) || !queue.FinishService()) return false;
+            CheckStates();
+            return true;
+        }
 
         /// <summary>Needs that take part in this wave (the ones with a building on the island).</summary>
         public IEnumerable<NeedId> Needs
@@ -171,16 +225,14 @@ namespace ResortEmpire.Core
         {
             if (waveTime <= Time) return;
 
-            foreach (NeedQueue need in _needList)
-            {
-                need.Speed = _serviceSpeedForNeed != null ? Math.Max(0, _serviceSpeedForNeed(need.Need)) : 0;
-            }
+            ReadSpeeds();
 
             // OUR-34 + OUR-46/47: jump from event to event (the next arrival or service end over every need), so the
-            // result never depends on the step size.
+            // result never depends on the step size. OUR-38/39: states are checked at every event and on a fixed
+            // 0.25 s grid of wave time.
             while (true)
             {
-                double next = waveTime;
+                double next = Math.Min(waveTime, _nextStateCheck);
                 foreach (NeedQueue need in _needList)
                 {
                     next = Math.Min(next, need.NextEventTime(Time));
@@ -191,10 +243,80 @@ namespace ResortEmpire.Core
 
                 bool any = false;
                 foreach (NeedQueue need in _needList) any |= need.ProcessDueEvents(Time);
-                if (!any && Time >= waveTime) break;
+
+                bool gridCheck = Time >= _nextStateCheck - TimeEpsilon;
+                if (gridCheck) _nextStateCheck += StateCheckInterval;
+                if (any || gridCheck) CheckStates();
+
+                if (!any && !gridCheck && Time >= waveTime) break;
             }
 
             Time = waveTime;
+        }
+
+        private void ReadSpeeds()
+        {
+            foreach (NeedQueue need in _needList)
+            {
+                need.Speed = _serviceSpeedForNeed != null ? Math.Max(0, _serviceSpeedForNeed(need.Need)) : 0;
+            }
+        }
+
+        /// <summary>OUR-38 / OUR-39: the state machine of Build doc §4.4, for every need at the current wave time.</summary>
+        private void CheckStates()
+        {
+            foreach (NeedQueue need in _needList)
+            {
+                need.LogQueue(Time, _bottleneckHysteresis);
+                if (need.State == NeedState.Bottleneck) need.BottleneckSeconds += Time - _lastStateCheck;
+
+                // Follow the transitions until the state is stable (e.g. BOTTLENECK -> RECOVERING -> SATISFIED at the
+                // last service), raising an event for each step.
+                for (int step = 0; step < 4; step++)
+                {
+                    NeedState next = NextState(need);
+                    if (next == need.State) break;
+                    NeedState from = need.State;
+                    need.State = next;
+                    StateChanged?.Invoke(need.Need, from, next);
+                }
+            }
+
+            _lastStateCheck = Time;
+        }
+
+        private NeedState NextState(NeedQueue need)
+        {
+            int waiting = need.Waiting.Count;
+            bool arrivalsClosed = need.Arrived >= need.Total && Time >= WaveTimer - TimeEpsilon;
+            bool done = arrivalsClosed && waiting == 0 && need.Seated == 0;
+
+            // "Rastie >= hysteresis": the queue is longer now than it was hysteresis seconds ago.
+            bool growing = waiting > need.WaitingAt(Time - _bottleneckHysteresis);
+
+            // OUR-39: catching up = the building serves faster than guests arrive right now (seats x speed versus
+            // demand / waveTimer while arrivals are open, 0 after). Reacts at once to a Worker move.
+            double arrivalRate = need.Arrived < need.Total ? need.Total / WaveTimer : 0;
+            bool catchingUp = need.Seats * need.Speed > arrivalRate + TimeEpsilon;
+
+            switch (need.State)
+            {
+                case NeedState.Ok:
+                    if (done) return NeedState.Satisfied;
+                    return waiting > _bottleneckThreshold && growing ? NeedState.Bottleneck : NeedState.Ok;
+
+                case NeedState.Bottleneck:
+                    // Never straight to SATISFIED: it always passes RECOVERING (Build doc §4.4).
+                    return catchingUp || arrivalsClosed ? NeedState.Recovering : NeedState.Bottleneck;
+
+                case NeedState.Recovering:
+                    if (done) return NeedState.Satisfied;
+                    if (waiting <= _bottleneckThreshold) return NeedState.Ok;
+                    return !catchingUp && growing ? NeedState.Bottleneck : NeedState.Recovering;
+
+                default:
+                    return need.State;
+            }
         }
 
         private NeedQueue Get(NeedId need)
@@ -225,6 +347,39 @@ namespace ResortEmpire.Core
             public NeedId Need { get; }
             public int Total { get; }
             public int Seats { get; }
+
+            /// <summary>OUR-38 / OUR-39: the need's state (Build doc §4.4).</summary>
+            public NeedState State { get; set; } = NeedState.Ok;
+
+            public double BottleneckSeconds { get; set; }
+
+            /// <summary>Queue length after each change: (wave time, waiting), oldest first. Answers "queue 3 s ago".</summary>
+            private readonly List<(double Time, int Waiting)> _queueLog = new List<(double, int)>();
+
+            public void LogQueue(double now, double keepSeconds)
+            {
+                int waiting = Waiting.Count;
+                int last = _queueLog.Count - 1;
+                if (last >= 0 && _queueLog[last].Waiting == waiting) return;
+                if (last >= 0 && _queueLog[last].Time >= now - TimeEpsilon) _queueLog[last] = (now, waiting);
+                else _queueLog.Add((now, waiting));
+
+                // Keep one entry older than the window, so WaitingAt still knows the value at its start.
+                while (_queueLog.Count > 1 && _queueLog[1].Time < now - keepSeconds - 1) _queueLog.RemoveAt(0);
+            }
+
+            /// <summary>Queue length at wave time <paramref name="time"/> (0 before the first guest waited).</summary>
+            public int WaitingAt(double time)
+            {
+                int waiting = 0;
+                foreach ((double t, int w) in _queueLog)
+                {
+                    if (t > time + TimeEpsilon) break;
+                    waiting = w;
+                }
+
+                return waiting;
+            }
             public double[] ArrivalTimes { get; }
             public int Arrived { get; private set; }
             public int Seated => _remaining.Count;

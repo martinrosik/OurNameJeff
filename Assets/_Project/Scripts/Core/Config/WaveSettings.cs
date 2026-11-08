@@ -7,10 +7,6 @@ namespace ResortEmpire.Core
     /// Wave timing (Build doc §4.8 parameter table). Defaults are the Build doc values; tune them in the
     /// config asset, not here.
     /// <para>
-    /// Planned additions (see docs/tasks): <c>bottleneckThreshold</c> 4 and <c>bottleneckHysteresis</c> 3 s
-    /// (OUR-38, OUR-39).
-    /// </para>
-    /// <para>
     /// Service (OUR-46, OUR-47) uses the Jira numbers: 0.33 s per guest with a Worker, 1 s without
     /// (serviceTime 0.33 ÷ utilization 1.0 / 0.33). The Build doc says serviceTime 12 s; see
     /// docs/design-conflicts.md row 10.
@@ -33,6 +29,12 @@ namespace ResortEmpire.Core
 
         [Tooltip("OUR-47: service speed of a building without a Worker (doc: 0.33, TUNING 0.1–0.6). With serviceTime 0.33 a guest takes 1 s. WR2: must stay above 0, or the wave could never end.")]
         [Min(0.01f)] public float utilizationEmpty = 0.33f;
+
+        [Tooltip("OUR-38: a need turns BOTTLENECK when more than this many guests wait in its queue (and the queue is growing). Seated guests don't count (doc: 4, TUNING 1–10).")]
+        [Min(1)] public int bottleneckThreshold = 4;
+
+        [Tooltip("OUR-38 / OUR-39: seconds the queue must have grown before the warning shows or comes back, so it doesn't flicker (doc: 3 s, TUNING 1–10).")]
+        [Min(0.1f)] public float bottleneckHysteresis = 3f;
 
         /// <summary>Seconds one seat takes to serve one guest, with or without a Worker.</summary>
         public double GetServiceSeconds(bool hasWorker) => serviceTime / (double)(hasWorker ? utilizationStaffed : utilizationEmpty);
