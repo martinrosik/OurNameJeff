@@ -3,7 +3,8 @@
   "rootNamespace": "ResortEmpire.Game",
   "references": [
     "ResortEmpire.Core",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "Unity.TextMeshPro"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

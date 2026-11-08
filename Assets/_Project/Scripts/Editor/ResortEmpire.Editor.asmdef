@@ -4,7 +4,10 @@
   "references": [
     "ResortEmpire.Core",
     "ResortEmpire.Game",
-    "ResortEmpire.UI"
+    "ResortEmpire.UI",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [
     "Editor"
