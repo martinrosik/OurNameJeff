@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ResortEmpire.Editor
 {
-    /// <summary>Config and balance tools under "Resort Empire" in the Editor menu bar.</summary>
+    /// <summary>Config tools under "Resort Empire" in the Editor menu bar.</summary>
     internal static class GameConfigMenu
     {
         [MenuItem("Resort Empire/Config/Select Prototype Config", priority = 100)]
@@ -47,34 +47,11 @@ namespace ResortEmpire.Editor
             List<string> errors = GameConfigValidator.Validate(config);
             if (errors.Count == 0)
             {
-                Debug.Log("Prototype config is valid (WR1, WR2 and data checks pass).");
+                Debug.Log("Prototype config is valid.");
             }
             else
             {
                 Debug.LogError("Prototype config has problems:\n- " + string.Join("\n- ", errors), config);
-            }
-        }
-
-        [MenuItem("Resort Empire/Balance/Wave Balance Report", priority = 200)]
-        private static void RunBalanceReport()
-        {
-            GameConfig config = LoadPrototypeConfig();
-            if (config == null)
-            {
-                Debug.LogError($"No config at {PrototypeConfigDefaults.AssetPath}.");
-                return;
-            }
-
-            WaveBalanceReport report = WaveBalanceSimulator.BuildReport(config);
-            string message = "Wave balance (passive player: one placement, no moves, upgrades or Energy)\n" + report.ToTable()
-                             + $"\nPassive Coins waves 1–3: {report.PassiveCoins(1, 3)}, waves 4–6: {report.PassiveCoins(4, 6)}";
-            if (report.HasViolations)
-            {
-                Debug.LogWarning(message, config);
-            }
-            else
-            {
-                Debug.Log(message, config);
             }
         }
 

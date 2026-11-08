@@ -5,9 +5,9 @@ using UnityEngine;
 namespace ResortEmpire.Editor
 {
     /// <summary>
-    /// The Build doc's prototype numbers (§4.8, as of 2026-09-29), used to create
+    /// The Build doc's prototype starting content (§4.5, §4.8, as of 2026-09-29), used to create
     /// <c>Assets/_Project/Data/Config_Prototype.asset</c> and as a fixed baseline in tests.
-    /// Tune the asset, not this file. All values are "e.g."/TUNING in the doc.
+    /// Tune the asset, not this file. All numbers are "e.g."/TUNING in the doc.
     /// </summary>
     public static class PrototypeConfigDefaults
     {
@@ -18,36 +18,31 @@ namespace ResortEmpire.Editor
         {
             var config = ScriptableObject.CreateInstance<GameConfig>();
             config.name = "Config_Prototype";
-
-            // Scalar settings: the field initializers already hold the Build doc defaults.
             config.wave = new WaveSettings();
-            config.satisfaction = new SatisfactionSettings();
-            config.economy = new EconomySettings();
-            config.energy = new EnergySettings();
 
             config.needs = new List<NeedDefinition>
             {
-                Need(NeedId.Rooms, "Rooms", 1f),
-                Need(NeedId.Drinks, "Drinks", 1f),
-                Need(NeedId.Food, "Food", 1f),
-                Need(NeedId.Relax, "Relax", 1f),
-                Need(NeedId.OceanView, "Ocean View", 1.5f),
+                Need(NeedId.Rooms, "Rooms"),
+                Need(NeedId.Drinks, "Drinks"),
+                Need(NeedId.Food, "Food"),
+                Need(NeedId.Relax, "Relax"),
+                Need(NeedId.OceanView, "Ocean View"),
             };
 
-            // Start: 3 buildings, 2 Workers. Restaurant starts empty (wave 1 has the least Food).
+            // OUR-31: the island starts with 3 buildings and 2 Workers. The Restaurant starts empty
+            // (wave 1 has the least Food). Pool and Bungalows are unlocked in a later sprint.
             config.buildings = new List<BuildingDefinition>
             {
-                Building(BuildingId.Reception, "Reception", NeedId.Rooms, owned: true, staffed: true),
-                Building(BuildingId.Restaurant, "Restaurant", NeedId.Food, owned: true, staffed: false),
-                Building(BuildingId.BeachBar, "Beach Bar", NeedId.Drinks, owned: true, staffed: true),
-                Unlockable(BuildingId.Pool, "Pool", NeedId.Relax, afterWave: 3, cost: 1200, resortValue: 100),
-                Unlockable(BuildingId.Bungalows, "Bungalows", NeedId.OceanView, afterWave: 6, cost: 2500, resortValue: 150),
+                Building(BuildingId.Reception, "Reception", NeedId.Rooms, staffed: true),
+                Building(BuildingId.Restaurant, "Restaurant", NeedId.Food, staffed: false),
+                Building(BuildingId.BeachBar, "Beach Bar", NeedId.Drinks, staffed: true),
             };
 
+            // OUR-33 shows these before each wave. Relax and Ocean View are skipped until their buildings exist.
             config.waves = new List<WaveDefinition>
             {
                 Wave(12, 8, 8, 6, 0, 0, "No bottleneck; the player learns to read the panel."),
-                Wave(18, 12, 16, 10, 0, 0, "First bottleneck: everything above ~7, the empty building falls behind. Sudden rush at ~45 s.", rush: true),
+                Wave(18, 12, 16, 10, 0, 0, "First bottleneck: everything above ~7, the empty building falls behind. Sudden rush at ~45 s."),
                 Wave(24, 16, 18, 14, 0, 0, "Pressure on two needs, then Pool unlocks."),
                 Wave(26, 16, 18, 14, 8, 0, "Relax debut (soft); other needs hold."),
                 Wave(34, 20, 22, 18, 16, 0, "First 4-need bottleneck."),
@@ -59,38 +54,26 @@ namespace ResortEmpire.Editor
             return config;
         }
 
-        private static NeedDefinition Need(NeedId id, string name, float weight) =>
-            new NeedDefinition { need = id, displayName = name, satisfactionWeight = weight };
+        private static NeedDefinition Need(NeedId id, string name) =>
+            new NeedDefinition { need = id, displayName = name };
 
-        private static BuildingDefinition Building(BuildingId id, string name, NeedId need, bool owned, bool staffed) =>
+        // OUR-50: capacity per level, seats 3 → 5 → 7 (upgrades come in a later sprint).
+        private static BuildingDefinition Building(BuildingId id, string name, NeedId need, bool staffed) =>
             new BuildingDefinition
             {
                 building = id,
                 displayName = name,
                 need = need,
-                unlockedAtStart = owned,
                 staffedAtStart = staffed,
-                levels = Levels(),
+                levels = new List<BuildingLevel>
+                {
+                    new BuildingLevel { seats = 3 },
+                    new BuildingLevel { seats = 5 },
+                    new BuildingLevel { seats = 7 },
+                },
             };
 
-        private static BuildingDefinition Unlockable(BuildingId id, string name, NeedId need, int afterWave, int cost, int resortValue)
-        {
-            BuildingDefinition building = Building(id, name, need, owned: false, staffed: false);
-            building.unlockAfterWave = afterWave;
-            building.unlockCost = cost;
-            building.unlockResortValue = resortValue;
-            return building;
-        }
-
-        // Seats 3 → 5 → 7, costs –, 500, 1,200. Resort Value gains are placeholders (not in the doc).
-        private static List<BuildingLevel> Levels() => new List<BuildingLevel>
-        {
-            new BuildingLevel { seats = 3, cost = 0, resortValue = 0 },
-            new BuildingLevel { seats = 5, cost = 500, resortValue = 20 },
-            new BuildingLevel { seats = 7, cost = 1200, resortValue = 40 },
-        };
-
-        private static WaveDefinition Wave(int guests, int rooms, int drinks, int food, int relax, int oceanView, string beat, bool rush = false) =>
+        private static WaveDefinition Wave(int guests, int rooms, int drinks, int food, int relax, int oceanView, string beat) =>
             new WaveDefinition
             {
                 guests = guests,
@@ -100,7 +83,6 @@ namespace ResortEmpire.Editor
                 relax = relax,
                 oceanView = oceanView,
                 intendedBeat = beat,
-                rush = new RushEventDefinition { enabled = rush, startTime = 45f, units = 6, duration = 10f },
             };
     }
 }
