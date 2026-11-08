@@ -99,6 +99,7 @@ namespace ResortEmpire.Tests
         [Test]
         public void ArrivalsFillTheSeatsThenWaitInAQueue()
         {
+            _config.wave.serviceTime = 1_000_000f; // nobody is served in this test, so the queue builds up
             ResortGame game = StartedGame();
 
             game.Tick(90);
@@ -107,7 +108,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(8, rooms.Total);
             Assert.AreEqual(3, rooms.Seated, "3 seats at level 1.");
             Assert.AreEqual(5, rooms.Waiting);
-            Assert.AreEqual(0, rooms.Served, "No service before OUR-46.");
+            Assert.AreEqual(0, rooms.Served, "Service is switched off in this test.");
             Assert.AreEqual(3, game.GetSeatedCount(BuildingId.Reception));
 
             CollectionAssert.AreEqual(

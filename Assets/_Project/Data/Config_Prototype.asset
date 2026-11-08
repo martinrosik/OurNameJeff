@@ -15,6 +15,9 @@ MonoBehaviour:
   wave:
     incomingDuration: 3
     waveTimer: 90
+    serviceTime: 0.33
+    utilizationStaffed: 1
+    utilizationEmpty: 0.33
   needs:
   - need: 0
     displayName: Rooms

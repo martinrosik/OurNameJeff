@@ -91,12 +91,22 @@ namespace ResortEmpire.Core
 
         /// <summary>
         /// Guests currently being served at a building (fills OUR-50's seat squares).
-        /// Seats fill as guests arrive (OUR-34); they empty again once service exists (OUR-46/47).
+        /// Seats fill as guests arrive (OUR-34) and empty as they are served (OUR-46/47).
         /// </summary>
         public int GetSeatedCount(BuildingId building)
         {
             BuildingRuntime runtime = GetBuilding(building);
             return runtime == null ? 0 : GetNeedStatus(runtime.Need).Seated;
+        }
+
+        /// <summary>
+        /// OUR-46 / OUR-47: seconds one seat of a building takes to serve one guest right now
+        /// (serviceTime ÷ utilization: 0.33 s with a Worker, 1 s without, with the prototype config).
+        /// </summary>
+        public double GetServiceSeconds(BuildingId building)
+        {
+            BuildingRuntime runtime = GetBuilding(building);
+            return Config.wave.GetServiceSeconds(runtime != null && runtime.HasWorker);
         }
 
         /// <summary>OUR-34: live numbers of a need in the current wave (all zero outside a wave).</summary>
@@ -134,7 +144,8 @@ namespace ResortEmpire.Core
             CurrentWave = new WaveSimulation(
                 GetForecast(CompletedWaves),
                 Config.wave.waveTimer,
-                need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0);
+                need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0,
+                GetServiceSpeed);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;
@@ -169,9 +180,9 @@ namespace ResortEmpire.Core
             WaveTime += deltaSeconds;
 
             // OUR-34: release this wave's demand evenly over the 90 s arrival phase (unit k at (k+1)·90/N s).
+            // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             CurrentWave.AdvanceTo(WaveTime);
 
-            // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             // OUR-38 / OUR-39: update each need's state (queue growing → BOTTLENECK, catching up → RECOVERING).
             // OUR-41: after 90 s no new guests come (CurrentWave.ArrivalsClosed), but nobody leaves: the queues are
             // still served until they are empty (WR3, WR4). Nothing ends the wave on a timer.
@@ -197,6 +208,13 @@ namespace ResortEmpire.Core
             SetPhase(GamePhase.WaveComplete);
             WaveCompleted?.Invoke(LastWaveResult);
             return true;
+        }
+
+        /// <summary>OUR-46 / OUR-47: progress per second of a seated unit of <paramref name="need"/>.</summary>
+        private double GetServiceSpeed(NeedId need)
+        {
+            BuildingDefinition definition = Config.GetBuildingForNeed(need);
+            return definition == null ? 0 : 1.0 / GetServiceSeconds(definition.building);
         }
 
         private void SetPhase(GamePhase phase)

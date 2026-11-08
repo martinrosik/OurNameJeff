@@ -7,8 +7,9 @@ namespace ResortEmpire.Tests
 {
     /// <summary>
     /// OUR-41 (serving the last guests after the 90 s arrivals) and OUR-35 (the wave ends once everyone is served,
-    /// then WAVE_RESOLVING → WAVE_COMPLETE when the guests are back on the boat). Service timing is OUR-46, so these
-    /// tests finish services directly with <see cref="WaveSimulation.FinishService"/>.
+    /// then WAVE_RESOLVING → WAVE_COMPLETE when the guests are back on the boat). These tests switch timed service
+    /// (OUR-46, see ServiceTests) off with a huge serviceTime and finish services directly with
+    /// <see cref="WaveSimulation.FinishService"/>.
     /// </summary>
     public class WaveEndTests
     {
@@ -21,6 +22,7 @@ namespace ResortEmpire.Tests
         {
             _config = PrototypeConfigDefaults.Create();
             _config.wave.incomingDuration = 0f; // skip the boat so Tick(t) is wave time t
+            _config.wave.serviceTime = 1_000_000f; // the tests serve guests by hand
         }
 
         [TearDown]

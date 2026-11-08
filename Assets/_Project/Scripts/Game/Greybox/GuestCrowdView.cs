@@ -17,8 +17,9 @@ namespace ResortEmpire.Game
     /// </para>
     /// <para>
     /// <b>Service (OUR-46 / OUR-47):</b> a guest counts as served when the Core's <see cref="NeedStatus.Served"/>
-    /// for that need has passed its unit (units are served first come, first served). Until service exists,
-    /// <c>Served</c> stays 0, so every guest stays in its first building.
+    /// for that need has passed its unit (units are served first come, first served). A guest also stays inside at
+    /// least the building's service time (<see cref="ResortGame.GetServiceSeconds"/>: 0.33 s with a Worker, 1 s
+    /// without), since the walk can make it arrive after the Core has already served its unit.
     /// </para>
     /// <para>
     /// A building's seat square fills only when a guest has walked in. When every seat is taken, the guest shows
@@ -54,9 +55,6 @@ namespace ResortEmpire.Game
 
         [Tooltip("Seconds between guests leaving the boat when several arrive at once.")]
         [SerializeField, Min(0f)] private float spawnSpacing = 0.35f;
-
-        [Tooltip("Shortest time a guest stays inside a building before walking on.")]
-        [SerializeField, Min(0f)] private float minVisitSeconds = 1f;
 
         [SerializeField] private int sortingOrder = 7;
 
@@ -146,6 +144,7 @@ namespace ResortEmpire.Game
                 }
 
                 building.Status = game.GetNeedStatus(runtime.Need);
+                building.ServiceSeconds = (float)game.GetServiceSeconds(runtime.Id);
             }
 
             while (_nextGuest < _plan.Guests.Count && IsReleased(_plan.Guests[_nextGuest].Visits[0]))
@@ -186,7 +185,7 @@ namespace ResortEmpire.Game
 
         /// <summary>
         /// The guest's unit has been served: the Core serves a need's units in arrival order, so unit k is done
-        /// once <see cref="NeedStatus.Served"/> is above k. Filled in by OUR-46 / OUR-47; 0 until then.
+        /// once <see cref="NeedStatus.Served"/> is above k (OUR-46 / OUR-47).
         /// </summary>
         private bool IsServed(GuestVisit visit) =>
             _buildings.TryGetValue(visit.Need, out Building b) && b.Status.Served > visit.Unit;
@@ -235,7 +234,7 @@ namespace ResortEmpire.Game
 
                 default: // Inside: waits to be served here, then walks on to its next building or back to the boat
                     walker.InsideTime += dt;
-                    if (walker.InsideTime < minVisitSeconds || !IsServed(walker.CurrentVisit)) return true;
+                    if (walker.InsideTime < GetServiceSeconds(walker.CurrentVisit) || !IsServed(walker.CurrentVisit)) return true;
 
                     if (walker.NextVisit >= walker.Guest.Count)
                     {
@@ -249,6 +248,9 @@ namespace ResortEmpire.Game
                     return true;
             }
         }
+
+        private float GetServiceSeconds(GuestVisit visit) =>
+            _buildings.TryGetValue(visit.Need, out Building b) ? b.ServiceSeconds : 0f;
 
         /// <summary>Points the walker at its next building, through the plaza.</summary>
         private void StartVisit(Walker walker, Vector3 via)
@@ -429,6 +431,7 @@ namespace ResortEmpire.Game
             public Vector3 Door { get; }
             public NeedStatus Status;
             public int Delivered;
+            public float ServiceSeconds;
         }
 
         private sealed class Walker

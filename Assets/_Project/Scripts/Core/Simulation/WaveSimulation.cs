@@ -18,7 +18,13 @@ namespace ResortEmpire.Core
     /// that arrived stays until it is served. <see cref="IsFinished"/> turns true once arrivals are closed and every
     /// queue and seat is empty; that ends the wave (OUR-35).
     /// </para>
-    /// Service timing (when a seated unit is done) comes with OUR-46 / OUR-47; it calls <see cref="FinishService"/>.
+    /// <para>
+    /// <b>OUR-46 / OUR-47 service:</b> each seated unit's progress goes from 0 to 1 at the building's service speed
+    /// (utilization ÷ serviceTime per second, read every step, so a Worker arriving or leaving changes it at once for
+    /// everyone seated). A finished unit leaves its seat and the first one in the queue sits down at that moment.
+    /// Arrivals and service ends are processed as one time-ordered sequence, so big and small steps give the same
+    /// result.
+    /// </para>
     /// </summary>
     public sealed class WaveSimulation
     {
@@ -27,16 +33,23 @@ namespace ResortEmpire.Core
 
         private readonly Dictionary<NeedId, NeedQueue> _needs = new Dictionary<NeedId, NeedQueue>();
         private readonly List<NeedQueue> _needList = new List<NeedQueue>();
+        private readonly Func<NeedId, double> _serviceSpeedForNeed;
 
         /// <param name="forecast">Demand for the needs on the island (already filtered by WR9).</param>
         /// <param name="waveTimer">Length of the arrival phase in seconds.</param>
         /// <param name="seatsForNeed">Seats of the building that serves a need.</param>
-        public WaveSimulation(WaveForecast forecast, double waveTimer, Func<NeedId, int> seatsForNeed)
+        /// <param name="serviceSpeedForNeed">
+        /// OUR-46 / OUR-47: progress per second of one seated unit of a need (utilization ÷ serviceTime). Read on every
+        /// step. Null: nobody is served automatically (only <see cref="FinishService"/>).
+        /// </param>
+        public WaveSimulation(
+            WaveForecast forecast, double waveTimer, Func<NeedId, int> seatsForNeed, Func<NeedId, double> serviceSpeedForNeed = null)
         {
             if (forecast == null) throw new ArgumentNullException(nameof(forecast));
             if (seatsForNeed == null) throw new ArgumentNullException(nameof(seatsForNeed));
             if (waveTimer <= 0) throw new ArgumentOutOfRangeException(nameof(waveTimer), "The arrival phase must be longer than 0 s.");
 
+            _serviceSpeedForNeed = serviceSpeedForNeed;
             WaveIndex = forecast.WaveIndex;
             GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
@@ -121,7 +134,7 @@ namespace ResortEmpire.Core
         /// <summary>
         /// One seated unit of <paramref name="need"/> is done: it leaves its seat, <see cref="NeedStatus.Served"/>
         /// goes up, and the first unit in the queue sits down at once (first come, first served).
-        /// <para>OUR-46 / OUR-47 decide <i>when</i> (progress at utilization ÷ serviceTime) and call this.</para>
+        /// <para><see cref="AdvanceTo"/> does this when a unit's progress reaches 1; tests may call it directly.</para>
         /// </summary>
         /// <returns>False when nobody of that need is seated.</returns>
         internal bool FinishService(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) && queue.FinishService();
@@ -158,15 +171,27 @@ namespace ResortEmpire.Core
         {
             if (waveTime <= Time) return;
 
-            // OUR-34: release every unit whose arrival time has come, in time order per need.
-            // Needs don't interact yet; once service exists (OUR-46) arrivals and service ends must be merged
-            // into one time-ordered sequence.
             foreach (NeedQueue need in _needList)
             {
-                while (need.Arrived < need.Total && need.ArrivalTimes[need.Arrived] <= waveTime + TimeEpsilon)
+                need.Speed = _serviceSpeedForNeed != null ? Math.Max(0, _serviceSpeedForNeed(need.Need)) : 0;
+            }
+
+            // OUR-34 + OUR-46/47: jump from event to event (the next arrival or service end over every need), so the
+            // result never depends on the step size.
+            while (true)
+            {
+                double next = waveTime;
+                foreach (NeedQueue need in _needList)
                 {
-                    need.Arrive(need.ArrivalTimes[need.Arrived]);
+                    next = Math.Min(next, need.NextEventTime(Time));
                 }
+
+                foreach (NeedQueue need in _needList) need.Progress(next - Time);
+                Time = next;
+
+                bool any = false;
+                foreach (NeedQueue need in _needList) any |= need.ProcessDueEvents(Time);
+                if (!any && Time >= waveTime) break;
             }
 
             Time = waveTime;
@@ -202,36 +227,97 @@ namespace ResortEmpire.Core
             public int Seats { get; }
             public double[] ArrivalTimes { get; }
             public int Arrived { get; private set; }
-            public int Seated { get; private set; }
+            public int Seated => _remaining.Count;
             public int Served { get; private set; }
+
+            /// <summary>Progress per second of each seated unit (OUR-46 / OUR-47).</summary>
+            public double Speed { get; set; }
 
             /// <summary>FIFO of units waiting for a seat, as their arrival times.</summary>
             public Queue<double> Waiting { get; } = new Queue<double>();
 
-            public bool FinishService()
+            /// <summary>Work left (1 - progress) of each seated unit, in the order they sat down.</summary>
+            private readonly List<double> _remaining = new List<double>();
+
+            /// <summary>Wave time of this need's next arrival or service end (infinity when there is none).</summary>
+            public double NextEventTime(double now)
             {
-                if (Seated == 0) return false;
-                Seated--;
-                Served++;
-                if (Waiting.Count > 0)
+                double next = Arrived < Total ? ArrivalTimes[Arrived] : double.PositiveInfinity;
+                if (Speed > 0 && _remaining.Count > 0)
                 {
-                    Waiting.Dequeue();
-                    Seated++;
+                    double least = double.PositiveInfinity;
+                    foreach (double r in _remaining) least = Math.Min(least, r);
+                    next = Math.Min(next, now + Math.Max(0, least) / Speed);
                 }
 
+                return next;
+            }
+
+            public void Progress(double seconds)
+            {
+                if (seconds <= 0 || Speed <= 0) return;
+                double work = seconds * Speed;
+                for (int i = 0; i < _remaining.Count; i++) _remaining[i] -= work;
+            }
+
+            /// <returns>True when something happened at <paramref name="now"/>.</returns>
+            public bool ProcessDueEvents(double now)
+            {
+                bool any = false;
+
+                // Service ends first, so a seat freed at the same moment as an arrival goes to the oldest in line.
+                for (int i = 0; i < _remaining.Count;)
+                {
+                    if (Speed > 0 && _remaining[i] <= TimeEpsilon * Speed)
+                    {
+                        _remaining.RemoveAt(i);
+                        Served++;
+                        SeatNextInLine();
+                        any = true;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+
+                while (Arrived < Total && ArrivalTimes[Arrived] <= now + TimeEpsilon)
+                {
+                    Arrive(ArrivalTimes[Arrived]);
+                    any = true;
+                }
+
+                return any;
+            }
+
+            public bool FinishService()
+            {
+                if (_remaining.Count == 0) return false;
+                _remaining.RemoveAt(0);
+                Served++;
+                SeatNextInLine();
                 return true;
             }
 
-            public void Arrive(double time)
+            private void Arrive(double time)
             {
                 Arrived++;
-                if (Seated < Seats)
+                if (_remaining.Count < Seats)
                 {
-                    Seated++;
+                    _remaining.Add(1);
                 }
                 else
                 {
                     Waiting.Enqueue(time);
+                }
+            }
+
+            private void SeatNextInLine()
+            {
+                if (Waiting.Count > 0 && _remaining.Count < Seats)
+                {
+                    Waiting.Dequeue();
+                    _remaining.Add(1);
                 }
             }
         }
@@ -265,7 +351,7 @@ namespace ResortEmpire.Core
         public int Seated { get; }
 
         /// <summary>
-        /// Units fully served. Stays 0 until service exists (OUR-46). Serve each need's units in arrival order
+        /// Units fully served (OUR-46 / OUR-47). Each need's units are served in arrival order
         /// (first come, first served): the walking guests (GuestCrowdView) move on to their next building once
         /// <c>Served</c> has passed their unit.
         /// </summary>
