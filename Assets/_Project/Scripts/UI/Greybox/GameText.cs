@@ -52,10 +52,18 @@ namespace ResortEmpire.UI
         public static string NeedProgress(ResortGame game, NeedStatus status) =>
             $"{Need(game, status.Need)}  {status.Served}/{status.Total}";
 
-        public static string NeedState(NeedStatus status, bool isPremium)
+        public static string NeedStateLabel(NeedState state, bool isPremium)
         {
-            string state = status.Total > 0 && status.Served >= status.Total ? "All served" : "OK";
-            return isPremium ? $"PREMIUM: {state}" : state;
+            string label;
+            switch (state)
+            {
+                case NeedState.Bottleneck: label = "Queue growing!"; break;
+                case NeedState.Recovering: label = "Catching up"; break;
+                case NeedState.Satisfied: label = "All served"; break;
+                default: label = "OK"; break;
+            }
+
+            return isPremium ? $"PREMIUM: {label}" : label;
         }
 
         public static string BuildingStaffing(BuildingRuntime building) =>

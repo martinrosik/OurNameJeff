@@ -14,6 +14,8 @@ namespace ResortEmpire.UI
     {
         private static readonly Color RowColor = Color.white.WithAlpha(0.85f);
         private static readonly Color StaffedColor = UIFactory.Ink.WithAlpha(0.75f);
+        private static readonly Color BottleneckRowColor = GreyboxPalette.Warning.Lighten(0.75f);
+        private static readonly Color RecoveringRowColor = GreyboxPalette.WorkerOn.Lighten(0.75f);
 
         private readonly GreyboxUI _owner;
         private readonly Image _background;
@@ -58,6 +60,7 @@ namespace ResortEmpire.UI
         public string ProgressText => _progress.text;
         public string StaffingText => _staffing.text;
         public string StateText => _state.text;
+        public Color StateColor => _state.color;
         public string QueueText => _queue.text;
 
         /// <summary>The filled part of the progress bar, from 0 to 1.</summary>
@@ -68,19 +71,41 @@ namespace ResortEmpire.UI
             NeedStatus status = game.GetNeedStatus(need);
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
+            NeedState state = game.GetNeedState(need);
 
             _building = building.Id;
             _background.gameObject.SetActive(true);
-            _background.color = isPremium ? GreyboxPalette.Premium : RowColor;
+            _background.color = GetRowColor(state, isPremium);
             _progress.text = GameText.NeedProgress(game, status);
             _staffing.text = GameText.BuildingStaffing(building);
             _staffing.color = building.HasWorker ? StaffedColor : GreyboxPalette.Warning;
             _barFill.SetFill(status.Total > 0 ? (float)status.Served / status.Total : 0f);
-            _state.text = GameText.NeedState(status, isPremium);
+            _state.text = GameText.NeedStateLabel(state, isPremium);
+            _state.color = GetStateColor(state);
             _queue.text = GameText.NeedQueue(status, building);
         }
 
         public void Hide() => _background.gameObject.SetActive(false);
+
+        private static Color GetRowColor(NeedState state, bool isPremium)
+        {
+            switch (state)
+            {
+                case NeedState.Bottleneck: return BottleneckRowColor;
+                case NeedState.Recovering: return RecoveringRowColor;
+                default: return isPremium ? GreyboxPalette.Premium : RowColor;
+            }
+        }
+
+        private static Color GetStateColor(NeedState state)
+        {
+            switch (state)
+            {
+                case NeedState.Bottleneck: return GreyboxPalette.Warning;
+                case NeedState.Recovering: return GreyboxPalette.WorkerOn;
+                default: return UIFactory.Ink;
+            }
+        }
 
         private void OnTapped() => _owner.OpenWorkerAllocation(_building);
     }

@@ -327,6 +327,37 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator OUR38_OUR39_TheRowSaysQueueGrowingThenCatchingUp()
+        {
+            // Food 20 on the empty Restaurant turns into a bottleneck. The asset is restored afterwards.
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 20;
+            try
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                yield return null;
+
+                NeedRowView food = _ui.Needs.Rows[2];
+                Assert.AreEqual(NeedState.Bottleneck, Game.GetNeedState(NeedId.Food));
+                Assert.AreEqual("Queue growing!", food.StateText);
+                Assert.AreEqual(GreyboxPalette.Warning, food.StateColor);
+                Assert.AreEqual("OK", _ui.Needs.Rows[0].StateText, "The Reception keeps up.");
+
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                yield return null;
+
+                Assert.AreEqual("Catching up", food.StateText, "Catching up in the same moment as the move.");
+                Assert.AreEqual(GreyboxPalette.WorkerOn, food.StateColor);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator OUR37_TheHeaderSaysWhenAllGuestsHaveArrived()
         {
             PauseService();
