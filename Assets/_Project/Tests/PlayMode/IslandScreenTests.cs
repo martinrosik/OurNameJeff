@@ -341,5 +341,54 @@ namespace ResortEmpire.Tests
                 Game.Config.waves[0].food = savedFood;
             }
         }
+
+        /// <summary>
+        /// The whole of wave 1 with the shipped config and the starting Workers, in 0.05 s steps with the guests
+        /// walking in lockstep: when the last guest arrives, when the last one is served, and when the last one is
+        /// back on the boat (the wave end). Logs the timeline as "[Wave 1 timeline] ...".
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Wave1Timeline_ArrivalsServiceAndBoarding()
+        {
+            const float step = 0.05f;
+            GuestCrowdView guests = _island.Guests;
+            NeedId[] needs = { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
+            double staffed = Game.GetServiceSeconds(BuildingId.Reception);
+            double empty = Game.GetServiceSeconds(BuildingId.Restaurant);
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+            Assert.AreEqual(GamePhase.WaveActive, Game.Phase);
+
+            double time = 0, lastArrival = 0, lastStepOff = 0, allServed = -1, lastBoarded = -1;
+            int arrived = 0, steppedOff = 0;
+            while (time < 900 && Game.Phase != GamePhase.WaveComplete)
+            {
+                Game.Tick(step);
+                guests.FastForward(step);
+                _island.Refresh();
+                time += step;
+
+                int nowArrived = needs.Sum(n => Game.GetNeedStatus(n).Arrived);
+                if (nowArrived > arrived) { arrived = nowArrived; lastArrival = time; }
+                if (guests.SpawnedCount > steppedOff) { steppedOff = guests.SpawnedCount; lastStepOff = time; }
+                if (allServed < 0 && Game.Phase == GamePhase.WaveResolving) allServed = Game.LastWaveResult.Duration;
+                if (Game.Phase == GamePhase.WaveComplete) lastBoarded = time;
+            }
+
+            Debug.Log($"[Wave 1 timeline] service with a Worker {staffed:0.##} s, without {empty:0.##} s; " +
+                      $"last unit arrives {lastArrival:0.##} s ({arrived} units); last guest steps off the boat {lastStepOff:0.##} s ({steppedOff} guests); " +
+                      $"everyone served {allServed:0.##} s; last guest back on the boat (wave end) {lastBoarded:0.##} s");
+            yield return null;
+
+            Assert.AreEqual(12, staffed, 1e-4, "Build doc: 12 s per guest with a Worker.");
+            Assert.AreEqual(12 / 0.33, empty, 1e-4, "Build doc: 12 / 0.33 = 36.4 s without.");
+            Assert.AreEqual(22, arrived);
+            Assert.AreEqual(90, lastArrival, step + 1e-6, "Guests stop arriving at 90 s (wave_timer).");
+            Assert.AreEqual(90 + empty, allServed, 0.1, "The last Food guest (90 s) on the empty Restaurant is done 36.4 s later.");
+            Assert.AreEqual(GamePhase.WaveComplete, Game.Phase, "The wave ends once the last guest has boarded.");
+            Assert.Greater(lastBoarded, allServed, "Guests still walk back to the boat after the last service.");
+            Assert.Less(lastBoarded, allServed + 30, "The walk back takes seconds, not minutes.");
+        }
     }
 }

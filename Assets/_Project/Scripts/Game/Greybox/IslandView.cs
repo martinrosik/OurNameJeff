@@ -23,7 +23,10 @@ namespace ResortEmpire.Game
             _buildings = GetComponentsInChildren<BuildingView>(true);
         }
 
-        private void LateUpdate()
+        private void LateUpdate() => Refresh();
+
+        /// <summary>Updates every view from the game; once per frame, or directly from tests.</summary>
+        internal void Refresh()
         {
             ResortGame game = controller != null ? controller.Game : null;
             if (game == null) return;
