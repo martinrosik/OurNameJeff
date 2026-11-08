@@ -11,13 +11,22 @@ for the MVP.
 - Unity 6000.6.5f1, URP 2D, Input System, landscape, bundle ID `com.ournamejeff.resortempire`
 - `.gitignore`, `.gitattributes` (LFS + UnityYAMLMerge), `.editorconfig`
 - `Assets/_Project` layout, assemblies (Core / Game / UI / Editor / Tests), Game scene, smoke tests
-- README, CONTRIBUTING, CLAUDE.md, design conflict log
+- README, CONTRIBUTING, developer guide, design conflict log
 
-## Phase 1: Wave simulation core (`ResortEmpire.Core`, no visuals) ✅
+## Status (OUR Sprint 2)
 
-Built from the Build doc. It reproduces the doc's "no intervention" table exactly. How it works, how to tune it,
-and the open assumptions: [simulation.md](simulation.md). Still worth getting the companion files
-(`wave_sim.py`, Energy System Spec, Decision Log, User Story Walkthrough, Project rules) to confirm those assumptions.
+The sprint is split across the team, so the code holds only the finished tickets: **OUR-31** (island + starting
+buildings), **OUR-27** (Welcome Guests), **OUR-33** (forecast), **OUR-48** (Worker indicator) and **OUR-50**
+(capacity indicator). The rest of the wave loop below (arrivals, service, drain, wave end, needs panel, overload
+states, moving Workers) is being built ticket by ticket. See [tasks/README.md](tasks/README.md) for the order and a
+guide per ticket, and [tasks/later.md](tasks/later.md) for features beyond this sprint. The phase lists below
+are the overall plan.
+
+## Phase 1: Wave simulation core (`ResortEmpire.Core`, no visuals)
+
+Sprint tickets OUR-34, OUR-46, OUR-47, OUR-41, OUR-35, OUR-38 and OUR-39 build this part; satisfaction, economy and
+the balance check come later. Still worth getting the companion files (`wave_sim.py`, Energy System Spec,
+Decision Log, User Story Walkthrough, Project rules).
 
 - **Config data**: ScriptableObjects for the §4.8 parameter table (`wave_timer`, `service_time`,
   `utilization_empty`, `patience_grace`, floors, rating thresholds, `coins_per_unit`, multipliers, …), needs,
@@ -41,17 +50,25 @@ and the open assumptions: [simulation.md](simulation.md). Still worth getting th
 
 ## Phase 2: Greybox playable prototype (placeholder art)
 
-- Island scene with placeholder building sprites showing seats, a queue, and whether a Worker is there
-- Guests as simple sprites that walk to buildings, queue and sit, with the wave arrival boat (US3)
-- S1 Home: resort status, currencies, Resort Value, next-wave forecast, Start Wave, tap a building / construction site
-- S2 Wave Needs Panel (side panel, island stays visible), bottleneck warning + guest toast, RECOVERING state
-- S3 Worker Allocation (bottom sheet), entered from S2 or from S1 before the wave
+The greybox follows the Build/UI docs wherever the Figma conflicts (see [design-conflicts.md](design-conflicts.md)).
+
+### 2a: Playable wave
+
+- ✅ Island scene with placeholder art, the 3 starting buildings, seats (capacity, OUR-50) and Worker indicator
+  (OUR-48), the guest boat (OUR-31)
+- ✅ S1 Home: resort status, next-wave forecast with Worker placement (OUR-33), Welcome Guests (OUR-27)
+- S2 Wave Needs Panel beside the island (OUR-37) with overload and "catching up" states (OUR-38, OUR-39)
+- S3 Worker Allocation, moving Workers before and during the wave (OUR-45)
+- Telling the player the wave ended (OUR-40)
+
+### 2b: Rest of the loop
+
 - S4 Wave Complete: rating, satisfaction %, rewards, What went well / Needs improvement, unhappy guests leaving
-- S5 Upgrade Suggestion tied to the longest bottleneck
-- S9 Area Unlock (one template, two triggers)
-- Sudden rush mini-event in wave 2 (Move Worker here / Use Energy / Ignore)
+- S5 Upgrade Suggestion tied to the longest bottleneck, and upgrading from a building tap between waves
+- S9 Area Unlock (one template, two triggers), including from a construction site tap
 - Pause on background + save/load of the full wave state (JSON in `persistentDataPath`), resume exactly (AC5)
 - Debug panel: jump to wave N, add Coins/Energy, time scale, reset save
+- Guests as simple sprites walking from the boat to the buildings
 
 ## Phase 3: Figma UI and art pass
 

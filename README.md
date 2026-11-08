@@ -42,6 +42,29 @@ git clone https://github.com/martinrosik/OurNameJeff.git
 
 Before your first commit, do the one-time git setup in [CONTRIBUTING.md](CONTRIBUTING.md#one-time-setup).
 
+## What's in the game now
+
+Sprint "OUR Sprint 2" is split across the team. This part is built:
+
+| Ticket | In the game |
+|---|---|
+| OUR-31 | The island with Reception, Restaurant and Beach Bar (placeholder art), palms, dock, guest boat |
+| OUR-48 | Worker indicator: a green **W** badge, or a grey badge and "No Worker" (one building always starts without a Worker) |
+| OUR-50 | Capacity indicator: one seat square per seat (3 at level 1) |
+| OUR-33 | The forecast before the wave: how many guests need Rooms, Drinks and Food |
+| OUR-27 | **Welcome Guests** starts the wave: the boat sails in and the status says "WAVE 1 IN PROGRESS" |
+
+Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). The wave stays in progress for
+now: guests, service, the needs panel, moving Workers and the wave end are other teammates' tickets. Each has a
+guide in [docs/tasks/](docs/tasks/README.md).
+
+Placeholder art comes from [Kenney](https://kenney.nl) (CC0, public domain): *City Kit (Suburban)* for the
+houses and *Pirate Kit* for palms, rocks, the dock and the ship. The 3D models were rendered to PNGs with
+**Resort Empire → Art → Render Selected Models To PNG** (`ModelSpriteRenderer`); only the PNGs and the license are
+in `Assets/_Project/Art/Kenney`. All of it gets replaced in the art pass.
+If you change the island layout code, **Resort Empire → Greybox → Rebuild Greybox Scene** regenerates the
+Game, Island and UI objects (manual edits to those three are lost).
+
 ## Project layout
 
 ```
@@ -73,4 +96,4 @@ Assembly references only point "down": `UI → Game → Core`. Core never refere
 - **uGUI + TextMeshPro** for UI
 - Landscape only, Android first (IL2CPP, ARM64). Bundle ID `com.ournamejeff.resortempire`
 - Unity Test Framework for EditMode/PlayMode tests
-- `com.unity.pipeline`: lets the `unity` CLI and AI tools (Claude Code) drive the Editor. Editor-only.
+- `com.unity.pipeline`: lets the `unity` command-line tool drive the Editor (scenes, assets, tests). Editor-only.
