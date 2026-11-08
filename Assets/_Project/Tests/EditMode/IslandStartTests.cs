@@ -93,7 +93,7 @@ namespace ResortEmpire.Tests
         }
 
         [Test]
-        public void OUR27_StartWaveSailsTheBoatInThenTheWaveStaysInProgress()
+        public void OUR27_StartWaveSailsTheBoatInThenTheWaveRunsUntilEveryoneIsServed()
         {
             var game = new ResortGame(_config);
             var phases = new List<GamePhase>();
@@ -108,9 +108,13 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(GamePhase.WaveActive, game.Phase);
             Assert.AreEqual(1, game.WaveTime, 1e-6, "Time past the boat goes into the wave.");
 
+            game.Tick(60);
+            Assert.AreEqual(GamePhase.WaveActive, game.Phase, "The wave stays in progress while guests arrive.");
+
+            // Since service (OUR-46) and the wave end (OUR-35) exist, a long wait ends the wave: everyone is served.
             game.Tick(10_000);
-            Assert.AreEqual(GamePhase.WaveActive, game.Phase, "No wave end yet (OUR-35/41/40).");
-            CollectionAssert.AreEqual(new[] { GamePhase.WaveIncoming, GamePhase.WaveActive }, phases);
+            Assert.AreEqual(GamePhase.WaveResolving, game.Phase);
+            CollectionAssert.AreEqual(new[] { GamePhase.WaveIncoming, GamePhase.WaveActive, GamePhase.WaveResolving }, phases);
         }
 
         [Test]

@@ -155,9 +155,10 @@ namespace ResortEmpire.Tests
 
         private static void RunTo(ResortGame game, double waveTime, double step)
         {
-            while (game.WaveTime + step <= waveTime) game.Tick(step);
+            // Time only runs while the wave is active; once it resolves (everyone served) stop, or this never ends.
+            while (game.Phase == GamePhase.WaveActive && game.WaveTime + step <= waveTime) game.Tick(step);
             double rest = waveTime - game.WaveTime;
-            if (rest > 0) game.Tick(rest);
+            if (rest > 0 && game.Phase == GamePhase.WaveActive) game.Tick(rest);
         }
     }
 }
