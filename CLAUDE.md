@@ -54,6 +54,12 @@ a new conflict, add a row and ask.
 
 Core/Game/UI expose internals to the test assemblies (`AssemblyInfo.cs`).
 
+The simulation (`ResortGame`, `WaveSimulation`, `GameConfig`, balance tool) is described in
+[docs/simulation.md](docs/simulation.md). Tunable numbers live in `Assets/_Project/Data/Config_Prototype.asset`.
+`PrototypeConfigDefaults` (Editor) holds the Build doc baseline used to create that asset and in tests.
+After changing wave rules or numbers, run the tests: `PrototypeBalanceTests` checks WR1/WR2/WR7/WR8 and that the
+model still reproduces the Build doc's "no intervention" table.
+
 ## Driving Unity from the CLI
 
 The project includes `com.unity.pipeline`, so the `unity` CLI can control a running Editor:

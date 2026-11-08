@@ -1,0 +1,109 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ed74164d3638164fadf9cf734777c31, type: 3}
+  m_Name: Config_Prototype
+  m_EditorClassIdentifier: ResortEmpire.Core::ResortEmpire.Core.GameConfig
+  wave:
+    incomingDuration: 3
+  needs:
+  - need: 0
+    displayName: Rooms
+  - need: 1
+    displayName: Drinks
+  - need: 2
+    displayName: Food
+  - need: 3
+    displayName: Relax
+  - need: 4
+    displayName: Ocean View
+  buildings:
+  - building: 0
+    displayName: Reception
+    need: 0
+    staffedAtStart: 1
+    levels:
+    - seats: 3
+    - seats: 5
+    - seats: 7
+  - building: 1
+    displayName: Restaurant
+    need: 2
+    staffedAtStart: 0
+    levels:
+    - seats: 3
+    - seats: 5
+    - seats: 7
+  - building: 2
+    displayName: Beach Bar
+    need: 1
+    staffedAtStart: 1
+    levels:
+    - seats: 3
+    - seats: 5
+    - seats: 7
+  waves:
+  - guests: 12
+    rooms: 8
+    drinks: 8
+    food: 6
+    relax: 0
+    oceanView: 0
+    intendedBeat: No bottleneck; the player learns to read the panel.
+  - guests: 18
+    rooms: 12
+    drinks: 16
+    food: 10
+    relax: 0
+    oceanView: 0
+    intendedBeat: 'First bottleneck: everything above ~7, the empty building falls behind. Sudden rush at ~45 s.'
+  - guests: 24
+    rooms: 16
+    drinks: 18
+    food: 14
+    relax: 0
+    oceanView: 0
+    intendedBeat: Pressure on two needs, then Pool unlocks.
+  - guests: 26
+    rooms: 16
+    drinks: 18
+    food: 14
+    relax: 8
+    oceanView: 0
+    intendedBeat: Relax debut (soft); other needs hold.
+  - guests: 34
+    rooms: 20
+    drinks: 22
+    food: 18
+    relax: 16
+    oceanView: 0
+    intendedBeat: First 4-need bottleneck.
+  - guests: 40
+    rooms: 25
+    drinks: 28
+    food: 22
+    relax: 20
+    oceanView: 0
+    intendedBeat: Peak before the unlock, then Bungalows unlock.
+  - guests: 42
+    rooms: 25
+    drinks: 28
+    food: 22
+    relax: 20
+    oceanView: 10
+    intendedBeat: Ocean View debut (soft, low volume, higher weight); other needs hold.
+  - guests: 52
+    rooms: 31
+    drinks: 35
+    food: 28
+    relax: 25
+    oceanView: 16
+    intendedBeat: Full lineup, prototype finale.
