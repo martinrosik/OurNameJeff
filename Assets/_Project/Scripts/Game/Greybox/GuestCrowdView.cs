@@ -22,9 +22,10 @@ namespace ResortEmpire.Game
     /// without), since the walk can make it arrive after the Core has already served its unit.
     /// </para>
     /// <para>
-    /// A building's seat square fills only when a guest has walked in. When every seat is taken, the guest shows
-    /// as a small queue square at the building instead. This is only a view: it never shows more seated or
-    /// waiting guests than the Core has.
+    /// A building's seat squares show the guests who are inside it right now: a square fills when a guest walks in
+    /// and empties when it walks out. Guests beyond the building's seats show as small queue squares. They follow
+    /// the walking guests, not the Core's seats: the Core serves a guest in 0.33–1 s, usually before the guest has
+    /// even walked over, so its seat count would leave the squares empty.
     /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
@@ -104,18 +105,18 @@ namespace ResortEmpire.Game
         /// <summary>Guests (of all that visited it) who have walked into the building of <paramref name="need"/>.</summary>
         public int GetDeliveredCount(NeedId need) => _buildings.TryGetValue(need, out Building b) ? b.Delivered : 0;
 
-        /// <summary>Seat squares shown as taken: never more than the Core seats, never more than have walked in.</summary>
+        /// <summary>Seat squares shown as taken: guests inside the building, up to its seats.</summary>
         public int GetShownSeated(NeedId need)
         {
             if (!_buildings.TryGetValue(need, out Building b)) return 0;
-            return Mathf.Clamp(b.Delivered - b.Status.Served, 0, b.Status.Seated);
+            return Mathf.Min(b.Inside, b.Seats);
         }
 
-        /// <summary>Queue squares shown: guests who walked in while every seat was taken.</summary>
+        /// <summary>Queue squares shown: guests inside beyond the building's seats.</summary>
         public int GetShownWaiting(NeedId need)
         {
             if (!_buildings.TryGetValue(need, out Building b)) return 0;
-            return Mathf.Clamp(b.Delivered - b.Status.Served - GetShownSeated(need), 0, b.Status.Waiting);
+            return Mathf.Max(0, b.Inside - b.Seats);
         }
 
         /// <summary>Sends out guests whose first unit the Core has released. Called by <see cref="IslandView"/>.</summary>
@@ -145,6 +146,7 @@ namespace ResortEmpire.Game
 
                 building.Status = game.GetNeedStatus(runtime.Need);
                 building.ServiceSeconds = (float)game.GetServiceSeconds(runtime.Id);
+                building.Seats = runtime.Seats;
             }
 
             while (_nextGuest < _plan.Guests.Count && IsReleased(_plan.Guests[_nextGuest].Visits[0]))
@@ -212,7 +214,11 @@ namespace ResortEmpire.Game
                         }
 
                         // At the door: the guest goes in, and the building's seat (or queue square) fills now.
-                        if (_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building)) building.Delivered++;
+                        if (_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building))
+                        {
+                            building.Delivered++;
+                            building.Inside++;
+                        }
                         walker.State = WalkerState.GoingIn;
                         walker.Fade = 0f;
                     }
@@ -238,15 +244,23 @@ namespace ResortEmpire.Game
 
                     if (walker.NextVisit >= walker.Guest.Count)
                     {
+                        LeaveBuilding(walker);
                         GoHome(walker);
                     }
                     else if (IsReleased(walker.Guest.Visits[walker.NextVisit]))
                     {
+                        LeaveBuilding(walker);
                         StartVisit(walker, via: plazaPosition);
                     }
 
                     return true;
             }
+        }
+
+        /// <summary>The guest walks out: its seat (or queue) square empties.</summary>
+        private void LeaveBuilding(Walker walker)
+        {
+            if (_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building) && building.Inside > 0) building.Inside--;
         }
 
         private float GetServiceSeconds(GuestVisit visit) =>
@@ -432,6 +446,10 @@ namespace ResortEmpire.Game
             public NeedStatus Status;
             public int Delivered;
             public float ServiceSeconds;
+
+            /// <summary>Guests inside the building right now (fills its seat squares).</summary>
+            public int Inside;
+            public int Seats;
         }
 
         private sealed class Walker

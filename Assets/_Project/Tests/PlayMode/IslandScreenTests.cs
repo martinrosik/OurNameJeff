@@ -180,6 +180,8 @@ namespace ResortEmpire.Tests
 
             Assert.AreEqual(0, guests.InsideCount, "Served: it leaves the Reception ...");
             Assert.AreEqual(1, guests.WalkingCount, "... and walks on to the Beach Bar.");
+            yield return null;
+            Assert.AreEqual(0, _island.GetView(BuildingId.Reception).ShownSeated, "Its seat square empties when it walks out.");
         }
 
         [UnityTest]
