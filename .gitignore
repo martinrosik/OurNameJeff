@@ -75,9 +75,3 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# ---------------------------------------------------------------
-# Claude Code (local, per-user)
-# ---------------------------------------------------------------
-.claude/worktrees/
-.claude/settings.local.json
