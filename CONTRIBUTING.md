@@ -20,7 +20,9 @@
 
 - `main` is always openable and playable. Nobody pushes to it directly. Everything goes through a pull request.
 - One branch per Jira ticket, named `<JIRA-KEY>-short-description`, for example `RE-12-wave-needs-panel`.
-- Start every commit message with the Jira key: `RE-12 Show bottleneck warning on the needs panel`.
+- Commit messages are plain English in the imperative, with no Jira keys:
+  `Add Welcome Guests and the forecast panel, build the island scene`.
+- A commit that fixes something starts with `Fix:`, for example `Fix: Warn in the Editor when the art is missing Git LFS files`.
 - Keep PRs small: one ticket, one PR. Another teammate reviews before merge.
 - Before opening a PR:
   - the project opens with no Console errors,
