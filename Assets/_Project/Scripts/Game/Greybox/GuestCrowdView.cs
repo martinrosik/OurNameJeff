@@ -50,7 +50,7 @@ namespace ResortEmpire.Game
         [SerializeField, Min(1f)] private float frameRate = 12f;
 
         [Tooltip("Height of a guest on screen, in world units.")]
-        [SerializeField, Min(0.1f)] private float guestHeight = 0.8f;
+        [SerializeField, Min(0.1f)] private float guestHeight = 0.45f;
 
         [Tooltip("Seconds between guests leaving the boat when several arrive at once.")]
         [SerializeField, Min(0f)] private float spawnSpacing = 0.35f;
@@ -61,7 +61,7 @@ namespace ResortEmpire.Game
         [SerializeField] private int sortingOrder = 7;
 
         private const float FadeSeconds = 0.35f;
-        private const float PathSpread = 0.22f;
+        private const float PathSpread = 0.14f;
         private const float StepSeconds = 0.05f;
 
         private readonly List<Walker> _walkers = new List<Walker>();

@@ -1905,7 +1905,7 @@ MonoBehaviour:
     - {fileID: -241051536, guid: ba6b39194734d6c4892fabfae4e86982, type: 3}
   walkSpeed: 1.3
   frameRate: 12
-  guestHeight: 0.8
+  guestHeight: 0.45
   spawnSpacing: 0.35
   minVisitSeconds: 1
   sortingOrder: 7
