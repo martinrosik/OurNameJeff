@@ -84,6 +84,9 @@ namespace ResortEmpire.Core
         /// <summary>OUR-35: raised when a wave reaches WAVE_COMPLETE. OUR-40 tells the player.</summary>
         public event Action<WaveResult> WaveCompleted;
 
+        /// <summary>OUR-45: a Worker moved from the first building to the second.</summary>
+        public event Action<BuildingId, BuildingId> WorkerMoved;
+
         /// <summary>OUR-35: the result of the last finished wave (null before the first one).</summary>
         public WaveResult LastWaveResult { get; private set; }
 
@@ -130,6 +133,37 @@ namespace ResortEmpire.Core
             }
 
             return new WaveForecast(waveIndex, wave.guests, demand);
+        }
+
+        /// <summary>
+        /// OUR-45: Workers can be moved before the wave (AWAITING_WAVE), while the boat comes in and during the wave,
+        /// including the drain after 90 s. Not while the wave resolves or on the result.
+        /// </summary>
+        public bool CanMoveWorkers =>
+            Phase == GamePhase.AwaitingWave || Phase == GamePhase.WaveIncoming || Phase == GamePhase.WaveActive;
+
+        /// <summary>
+        /// OUR-45: moves a Worker between buildings. Free and instant, no confirmation (WR5). Workers are anonymous;
+        /// with one slot per building and one fewer Worker than buildings, a move is always "pick which building to
+        /// leave empty". During a wave the new speeds apply at once, also to guests already seated (OUR-46/47).
+        /// The placement stays for the next waves.
+        /// </summary>
+        public WorkerMoveResult MoveWorker(BuildingId from, BuildingId to)
+        {
+            if (!CanMoveWorkers) return WorkerMoveResult.NotAllowedNow;
+
+            BuildingRuntime source = GetBuilding(from);
+            BuildingRuntime target = GetBuilding(to);
+            if (source == null || target == null) return WorkerMoveResult.BuildingNotOnIsland;
+            if (from == to) return WorkerMoveResult.SameBuilding;
+            if (!source.HasWorker) return WorkerMoveResult.NoWorkerAtSource;
+            if (target.HasWorker) return WorkerMoveResult.TargetFull;
+
+            // The time up to now was already simulated at the old speeds; the next Tick uses the new ones.
+            source.HasWorker = false;
+            target.HasWorker = true;
+            WorkerMoved?.Invoke(from, to);
+            return WorkerMoveResult.Moved;
         }
 
         /// <summary>OUR-27: the player starts the wave manually. AWAITING_WAVE → WAVE_INCOMING.</summary>

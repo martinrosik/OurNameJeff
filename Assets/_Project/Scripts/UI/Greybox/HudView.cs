@@ -76,8 +76,8 @@ namespace ResortEmpire.UI
             _startWave = UIFactory.Button("StartWaveButton", islandArea, "WELCOME GUESTS", GreyboxPalette.Primary, Color.white, 17, OnStartWave);
             ((RectTransform)_startWave.transform).At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(240f, 46f));
 
-            _hint = UIFactory.Text("Hint", islandArea, "Check what the guests will need, then welcome them.", 11, Color.white, TextAlignmentOptions.Center);
-            _hint.rectTransform.At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 54f), new Vector2(360f, 16f));
+            _hint = UIFactory.Text("Hint", islandArea, "Check what the guests will need. Tap a building to move a Worker.", 11, Color.white, TextAlignmentOptions.Center);
+            _hint.rectTransform.At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 54f), new Vector2(420f, 16f));
         }
 
         public Button StartWaveButton => _startWave;

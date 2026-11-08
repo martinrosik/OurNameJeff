@@ -8,7 +8,7 @@ namespace ResortEmpire.Game
     /// The island (OUR-31): refreshes every <see cref="BuildingView"/>, the guest boat and the walking guests
     /// (<see cref="GuestCrowdView"/>) from the game state, and completes a resolving wave when the guests have
     /// boarded (OUR-35).
-    /// Tapping buildings to move Workers is OUR-45 (see docs/tasks/OUR-45.md).
+    /// OUR-45: <see cref="GetBuildingAt"/> finds the tapped building; the UI opens the Worker allocation sheet.
     /// </summary>
     public sealed class IslandView : MonoBehaviour
     {
@@ -55,6 +55,17 @@ namespace ResortEmpire.Game
 
         /// <summary>The guests walking on the island.</summary>
         public GuestCrowdView Guests => guests;
+
+        /// <summary>OUR-45: the building under a world point (a tap), or null.</summary>
+        public BuildingView GetBuildingAt(Vector2 worldPoint)
+        {
+            foreach (BuildingView view in _buildings)
+            {
+                if (view.Contains(worldPoint)) return view;
+            }
+
+            return null;
+        }
 
         public BuildingView GetView(BuildingId building)
         {

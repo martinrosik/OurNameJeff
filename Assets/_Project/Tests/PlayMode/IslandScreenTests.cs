@@ -158,6 +158,64 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator OUR45_TappingABuildingFindsIt()
+        {
+            yield return null;
+
+            foreach (BuildingId id in new[] { BuildingId.Reception, BuildingId.Restaurant, BuildingId.BeachBar })
+            {
+                BuildingView view = _island.GetView(id);
+                Assert.AreSame(view, _island.GetBuildingAt(view.transform.position), $"A tap on the {id} finds it.");
+            }
+
+            Assert.IsNull(_island.GetBuildingAt(new Vector2(500f, 500f)), "A tap on the sea finds nothing.");
+        }
+
+        [UnityTest]
+        public IEnumerator OUR45_TheSheetMovesAWorkerToTheEmptyBuilding()
+        {
+            yield return null;
+            BuildingView restaurant = _island.GetView(BuildingId.Restaurant);
+            BuildingView reception = _island.GetView(BuildingId.Reception);
+            Assert.IsFalse(restaurant.ShowsWorker);
+
+            _ui.OpenWorkerAllocation(BuildingId.Restaurant);
+            yield return null;
+
+            Assert.IsTrue(_ui.Workers.IsOpen);
+            Assert.AreEqual(2, _ui.Workers.Options.Count, "Take from Reception / Take from Beach Bar.");
+            StringAssert.StartsWith("TAKE FROM RECEPTION", _ui.Workers.Options[0].GetComponentInChildren<TMPro.TMP_Text>().text);
+            StringAssert.Contains("Reception will be left without a Worker", _ui.Workers.Options[0].GetComponentInChildren<TMPro.TMP_Text>().text);
+
+            _ui.Workers.Options[0].onClick.Invoke();
+            yield return null;
+
+            Assert.IsFalse(_ui.Workers.IsOpen, "Moving is instant: the sheet closes.");
+            Assert.IsTrue(restaurant.ShowsWorker, "The W badge moved to the Restaurant ...");
+            Assert.IsFalse(reception.ShowsWorker, "... and the Reception shows No Worker.");
+            Assert.AreEqual("No Worker", reception.StatusText);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR45_WorkersCanBeMovedDuringTheWave()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 30);
+            yield return null;
+
+            _ui.OpenWorkerAllocation(BuildingId.BeachBar);
+            yield return null;
+            Assert.AreEqual(1, _ui.Workers.Options.Count, "Move to Restaurant.");
+            StringAssert.StartsWith("MOVE TO RESTAURANT", _ui.Workers.Options[0].GetComponentInChildren<TMPro.TMP_Text>().text);
+
+            _ui.Workers.Options[0].onClick.Invoke();
+            yield return null;
+
+            Assert.IsTrue(_island.GetView(BuildingId.Restaurant).ShowsWorker);
+            Assert.IsFalse(_island.GetView(BuildingId.BeachBar).ShowsWorker);
+        }
+
+        [UnityTest]
         public IEnumerator AGuestStaysInItsFirstBuildingUntilItIsServed()
         {
             GuestCrowdView guests = _island.Guests;
