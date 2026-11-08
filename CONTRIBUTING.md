@@ -46,6 +46,10 @@ Images (`png`, `psd`, `aseprite`, …), audio, fonts, video and `fbx` are stored
 (see `.gitattributes`). Nothing to do by hand. Check with `git lfs ls-files`. Don't commit huge source files
 nobody needs in the game (raw renders, video captures). Keep those in the shared drive.
 
+Without Git LFS, git checks out small text "pointer" files instead of the images, and Unity shows no sprites
+or icons. The Editor warns about it on start (**Resort Empire → Check Git LFS Files** runs the check again).
+Fix it in the project folder with `git lfs install` and `git lfs pull`.
+
 ## Code conventions
 
 - Everything in namespace `ResortEmpire.*` matching the assembly (`ResortEmpire.Core`, `ResortEmpire.Game`, …).
