@@ -23,8 +23,8 @@ namespace ResortEmpire.UI
                 case GamePhase.WaveIncoming: return "BOAT ARRIVING";
                 case GamePhase.WaveActive: return $"WAVE {wave} IN PROGRESS";
                 case GamePhase.WavePaused: return "PAUSED";
-                case GamePhase.WaveResolving:
-                case GamePhase.WaveComplete: return $"WAVE {wave} COMPLETE";
+                case GamePhase.WaveResolving: return $"WAVE {wave}: GUESTS LEAVING";
+                case GamePhase.WaveComplete: return $"WAVE {game.LastWaveResult?.WaveNumber ?? wave} COMPLETE";
                 case GamePhase.Upgrade: return "BETWEEN WAVES";
                 default: return string.Empty;
             }

@@ -63,6 +63,8 @@ Sprint "OUR Sprint 2" is split across the team. This part is built:
 | OUR-50 | Capacity indicator: one seat square per seat (3 at level 1) |
 | OUR-33 | The forecast before the wave: how many guests need Rooms, Drinks and Food |
 | OUR-27 | **Welcome Guests** starts the wave: the boat sails in and the status says "WAVE 1 IN PROGRESS" |
+| OUR-34 | Guests arrive evenly over 90 s (Rooms 8, Drinks 8, Food 6 in wave 1). Animated guests walk from the boat to their buildings, a guest can visit several buildings, seats and queue squares fill when they get there |
+| OUR-41 / OUR-35 | After 90 s nobody new comes but nobody leaves. When everyone is served the guests walk back to the boat ("GUESTS LEAVING") and the wave completes. Needs service (OUR-46) to happen in play |
 
 Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). The wave stays in progress for
 now: guests, service, the needs panel, moving Workers and the wave end are other teammates' tickets. Each has a

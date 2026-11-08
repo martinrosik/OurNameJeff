@@ -6,7 +6,8 @@ namespace ResortEmpire.Game
 {
     /// <summary>
     /// The island (OUR-31): refreshes every <see cref="BuildingView"/>, the guest boat and the walking guests
-    /// (<see cref="GuestCrowdView"/>) from the game state.
+    /// (<see cref="GuestCrowdView"/>) from the game state, and completes a resolving wave when the guests have
+    /// boarded (OUR-35).
     /// Tapping buildings to move Workers is OUR-45 (see docs/tasks/OUR-45.md).
     /// </summary>
     public sealed class IslandView : MonoBehaviour
@@ -44,6 +45,12 @@ namespace ResortEmpire.Game
             }
 
             if (boat != null) boat.Refresh(game);
+
+            // OUR-35: everyone is served; the wave is over once the last guest is back on the boat.
+            if (game.Phase == GamePhase.WaveResolving && (guests == null || guests.AllBoarded))
+            {
+                game.FinishResolving();
+            }
         }
 
         /// <summary>The guests walking on the island.</summary>

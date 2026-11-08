@@ -8,8 +8,9 @@ namespace ResortEmpire.Core
     /// <para>
     /// Implemented now: the starting island (OUR-31), Workers placed from the config (shown by OUR-48),
     /// building capacity (shown by OUR-50), the next-wave forecast (OUR-33), the manual wave start (OUR-27):
-    /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE, and guest arrivals over the 90 s arrival phase
-    /// (OUR-34, <see cref="WaveSimulation"/>). The wave then stays in progress until the
+    /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE, guest arrivals over the 90 s arrival phase
+    /// (OUR-34, <see cref="WaveSimulation"/>), the drain after it (OUR-41) and the wave end (OUR-35):
+    /// WAVE_ACTIVE → WAVE_RESOLVING (everyone served, guests return to the boat) → WAVE_COMPLETE. The rest comes with the
     /// teammates' tickets add guests and the wave end. Each one has a <c>// OUR-xx</c> hook below and a guide in
     /// <c>docs/tasks/</c>.
     /// </para>
@@ -41,12 +42,12 @@ namespace ResortEmpire.Core
         public GameConfig Config { get; }
         public GamePhase Phase { get; private set; }
 
-        /// <summary>Waves finished so far; also the index of the next wave. Grows once the wave end exists (OUR-35/41/40).</summary>
+        /// <summary>Waves finished so far; also the index of the next wave. Grows when a wave completes (OUR-35).</summary>
         public int CompletedWaves { get; private set; }
 
         public bool HasNextWave => CompletedWaves < Config.waves.Count;
 
-        /// <summary>Index of the wave being played (valid in WAVE_INCOMING and WAVE_ACTIVE).</summary>
+        /// <summary>Index of the wave being played (valid from WAVE_INCOMING to WAVE_RESOLVING).</summary>
         public int CurrentWaveIndex => CompletedWaves;
 
         /// <summary>Seconds of WAVE_ACTIVE so far. OUR-34 uses it for the 90 s arrival phase.</summary>
@@ -79,6 +80,12 @@ namespace ResortEmpire.Core
         }
 
         public event Action<GamePhase, GamePhase> PhaseChanged;
+
+        /// <summary>OUR-35: raised when a wave reaches WAVE_COMPLETE. OUR-40 tells the player.</summary>
+        public event Action<WaveResult> WaveCompleted;
+
+        /// <summary>OUR-35: the result of the last finished wave (null before the first one).</summary>
+        public WaveResult LastWaveResult { get; private set; }
 
         public BuildingRuntime GetBuilding(BuildingId id) => _buildings[(int)id];
 
@@ -166,8 +173,30 @@ namespace ResortEmpire.Core
 
             // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             // OUR-38 / OUR-39: update each need's state (queue growing → BOTTLENECK, catching up → RECOVERING).
-            // OUR-41: after 90 s no new guests come, but the queues are still served until they are empty.
-            // OUR-35 / OUR-40: when everything is served, end the wave (WAVE_RESOLVING → WAVE_COMPLETE) and tell the player.
+            // OUR-41: after 90 s no new guests come (CurrentWave.ArrivalsClosed), but nobody leaves: the queues are
+            // still served until they are empty (WR3, WR4). Nothing ends the wave on a timer.
+            // OUR-35: once everyone is served, the wave resolves. The guests then walk back to the boat (Game layer)
+            // and FinishResolving() completes the wave. OUR-40 tells the player.
+            if (CurrentWave.IsFinished)
+            {
+                LastWaveResult = new WaveResult(
+                    CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime);
+                SetPhase(GamePhase.WaveResolving);
+            }
+        }
+
+        /// <summary>
+        /// OUR-35: WAVE_RESOLVING → WAVE_COMPLETE. The Game layer calls it once every guest is back on the boat
+        /// (or right away when there are no guest views). Counts the wave and shows the next forecast.
+        /// </summary>
+        public bool FinishResolving()
+        {
+            if (Phase != GamePhase.WaveResolving) return false;
+
+            CompletedWaves++;
+            SetPhase(GamePhase.WaveComplete);
+            WaveCompleted?.Invoke(LastWaveResult);
+            return true;
         }
 
         private void SetPhase(GamePhase phase)

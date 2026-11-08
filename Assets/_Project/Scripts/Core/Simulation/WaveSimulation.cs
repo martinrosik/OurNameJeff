@@ -13,7 +13,12 @@ namespace ResortEmpire.Core
     /// the frame rate. Only needs with a building on the island spawn (WR9). An arriving unit takes a free seat,
     /// or waits in the building's FIFO queue (the arrival time is kept for waiting time and satisfaction later).
     /// </para>
-    /// Service (seats emptying again) comes with OUR-46 / OUR-47, the drain after 90 s with OUR-41.
+    /// <para>
+    /// <b>OUR-41 drain:</b> after the arrival timer nobody new comes, but nobody leaves either (WR4): every unit
+    /// that arrived stays until it is served. <see cref="IsFinished"/> turns true once arrivals are closed and every
+    /// queue and seat is empty; that ends the wave (OUR-35).
+    /// </para>
+    /// Service timing (when a seated unit is done) comes with OUR-46 / OUR-47; it calls <see cref="FinishService"/>.
     /// </summary>
     public sealed class WaveSimulation
     {
@@ -72,6 +77,54 @@ namespace ResortEmpire.Core
                 return true;
             }
         }
+
+        /// <summary>
+        /// OUR-41 / OUR-35: arrivals are closed and every unit has been served (no queue, no seated guest). The wave
+        /// may end. Nobody is ever sent away, so a wave only finishes by serving everyone (WR3, WR4, AC3).
+        /// </summary>
+        public bool IsFinished
+        {
+            get
+            {
+                if (!ArrivalsClosed) return false;
+                foreach (NeedQueue need in _needList)
+                {
+                    if (need.Seated > 0 || need.Waiting.Count > 0) return false;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>Units served so far over every need.</summary>
+        public int TotalServed
+        {
+            get
+            {
+                int served = 0;
+                foreach (NeedQueue need in _needList) served += need.Served;
+                return served;
+            }
+        }
+
+        /// <summary>Units in the whole wave over every need.</summary>
+        public int TotalUnits
+        {
+            get
+            {
+                int total = 0;
+                foreach (NeedQueue need in _needList) total += need.Total;
+                return total;
+            }
+        }
+
+        /// <summary>
+        /// One seated unit of <paramref name="need"/> is done: it leaves its seat, <see cref="NeedStatus.Served"/>
+        /// goes up, and the first unit in the queue sits down at once (first come, first served).
+        /// <para>OUR-46 / OUR-47 decide <i>when</i> (progress at utilization ÷ serviceTime) and call this.</para>
+        /// </summary>
+        /// <returns>False when nobody of that need is seated.</returns>
+        internal bool FinishService(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) && queue.FinishService();
 
         /// <summary>Needs that take part in this wave (the ones with a building on the island).</summary>
         public IEnumerable<NeedId> Needs
@@ -154,6 +207,20 @@ namespace ResortEmpire.Core
 
             /// <summary>FIFO of units waiting for a seat, as their arrival times.</summary>
             public Queue<double> Waiting { get; } = new Queue<double>();
+
+            public bool FinishService()
+            {
+                if (Seated == 0) return false;
+                Seated--;
+                Served++;
+                if (Waiting.Count > 0)
+                {
+                    Waiting.Dequeue();
+                    Seated++;
+                }
+
+                return true;
+            }
 
             public void Arrive(double time)
             {

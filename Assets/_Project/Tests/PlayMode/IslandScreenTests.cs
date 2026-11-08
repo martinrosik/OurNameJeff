@@ -185,5 +185,42 @@ namespace ResortEmpire.Tests
                 Assert.AreEqual(Mathf.Max(0, firstVisits - 3), view.ShownWaiting, $"{id}: the rest as queue squares.");
             }
         }
+
+        [UnityTest]
+        public IEnumerator OUR35_WhenEveryoneIsServedTheGuestsBoardAndTheWaveEnds()
+        {
+            GuestCrowdView guests = _island.Guests;
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer);
+            yield return null;
+            guests.FastForward(60f);
+
+            // Service is OUR-46: finish every service directly.
+            foreach (NeedId need in new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food })
+            {
+                while (Game.CurrentWave.FinishService(need)) { }
+            }
+
+            Game.Tick(0.1);
+            Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "Everyone is served.");
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "The guests are still on the island.");
+            Assert.IsFalse(guests.AllBoarded);
+            Assert.AreEqual("WAVE 1: GUESTS LEAVING", _ui.Hud.StatusText);
+
+            guests.FastForward(120f);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(guests.AllBoarded, "Every guest made its visits and walked back to the boat.");
+            Assert.AreEqual(GamePhase.WaveComplete, Game.Phase);
+            Assert.AreEqual(1, Game.CompletedWaves);
+            Assert.AreEqual("WAVE 1 COMPLETE", _ui.Hud.StatusText);
+            foreach (NeedId need in new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food })
+            {
+                Assert.AreEqual(guests.Plan.CountVisits(need), guests.GetDeliveredCount(need), $"Every {need} visit was made.");
+            }
+        }
     }
 }

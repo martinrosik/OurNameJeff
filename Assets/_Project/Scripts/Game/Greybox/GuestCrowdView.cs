@@ -11,8 +11,9 @@ namespace ResortEmpire.Game
     /// The wave's need units are shared out among its guests by <see cref="GuestPlan"/> (wave 1: 12 guests carry
     /// Rooms 8, Drinks 8, Food 6), so one guest may go to the Beach Bar and then to the Reception. A guest steps
     /// off the boat when the Core releases its first unit, walks to that building and goes in. It walks on to its
-    /// next building only once it has been <b>served</b> there and the Core has released its next unit; after its
-    /// last visit it is gone.
+    /// next building only once it has been <b>served</b> there and the Core has released its next unit. Served at
+    /// its last building, it walks back to the boat and boards. When every guest has boarded, the wave ends
+    /// (<see cref="AllBoarded"/>, OUR-35).
     /// </para>
     /// <para>
     /// <b>Service (OUR-46 / OUR-47):</b> a guest counts as served when the Core's <see cref="NeedStatus.Served"/>
@@ -77,6 +78,12 @@ namespace ResortEmpire.Game
 
         /// <summary>Guests who have stepped off the boat this wave.</summary>
         public int SpawnedCount => _nextGuest;
+
+        /// <summary>
+        /// Every guest of the wave has stepped off, made its visits and boarded the boat again. With
+        /// WAVE_RESOLVING this ends the wave (<see cref="IslandView"/> calls <see cref="ResortGame.FinishResolving"/>).
+        /// </summary>
+        public bool AllBoarded => _plan != null && _nextGuest >= _plan.Guests.Count && _walkers.Count == 0;
 
         /// <summary>Guests inside a building, waiting to be served before they walk on.</summary>
         public int InsideCount => _walkers.Count - WalkingCount;
@@ -198,6 +205,13 @@ namespace ResortEmpire.Game
                     FadeIn(walker, dt);
                     if (Walk(walker, dt))
                     {
+                        if (walker.GoingHome)
+                        {
+                            walker.State = WalkerState.Boarding;
+                            walker.Fade = 0f;
+                            return true;
+                        }
+
                         // At the door: the guest goes in, and the building's seat (or queue square) fills now.
                         if (_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building)) building.Delivered++;
                         walker.State = WalkerState.GoingIn;
@@ -210,15 +224,24 @@ namespace ResortEmpire.Game
                     walker.Fade += dt;
                     SetAlpha(walker, 1f - walker.Fade / FadeSeconds);
                     if (walker.Fade < FadeSeconds) return true;
-                    if (walker.NextVisit >= walker.Guest.Count) return false; // last visit: gone
                     walker.State = WalkerState.Inside;
                     walker.InsideTime = 0f;
                     return true;
 
-                default: // Inside: waits to be served here and for its next unit, then walks on
+                case WalkerState.Boarding:
+                    walker.Fade += dt;
+                    SetAlpha(walker, 1f - walker.Fade / FadeSeconds);
+                    return walker.Fade < FadeSeconds; // on the boat: gone
+
+                default: // Inside: waits to be served here, then walks on to its next building or back to the boat
                     walker.InsideTime += dt;
-                    GuestVisit next = walker.Guest.Visits[walker.NextVisit];
-                    if (walker.InsideTime >= minVisitSeconds && IsServed(walker.CurrentVisit) && IsReleased(next))
+                    if (walker.InsideTime < minVisitSeconds || !IsServed(walker.CurrentVisit)) return true;
+
+                    if (walker.NextVisit >= walker.Guest.Count)
+                    {
+                        GoHome(walker);
+                    }
+                    else if (IsReleased(walker.Guest.Visits[walker.NextVisit]))
                     {
                         StartVisit(walker, via: plazaPosition);
                     }
@@ -235,6 +258,16 @@ namespace ResortEmpire.Game
             Vector3 door = _buildings.TryGetValue(visit.Need, out Building building) ? building.Door : plazaPosition;
             walker.Target = via + walker.Spread;
             walker.Waypoints = new[] { door + new Vector3(walker.Spread.x * 0.5f, 0f, 0f) };
+            walker.NextWaypoint = 0;
+            walker.State = WalkerState.Walking;
+        }
+
+        /// <summary>Every need met: back across the plaza to the dock, and onto the boat.</summary>
+        private void GoHome(Walker walker)
+        {
+            walker.GoingHome = true;
+            walker.Target = plazaPosition + walker.Spread;
+            walker.Waypoints = new[] { dockPosition + walker.Spread * 0.5f };
             walker.NextWaypoint = 0;
             walker.State = WalkerState.Walking;
         }
@@ -383,9 +416,10 @@ namespace ResortEmpire.Game
         private enum WalkerState
         {
             Waiting, // on the boat, waiting for its turn to step off
-            Walking, // on the way to its next building
-            GoingIn, // fading out at the door; the seat or queue square fills
-            Inside,  // inside, until it is served here and the Core has released its next unit
+            Walking,  // on the way to its next building, or back to the boat
+            GoingIn,  // fading out at the door; the seat or queue square fills
+            Inside,   // inside, until it is served here (and the Core has released its next unit)
+            Boarding, // back at the dock, fading out onto the boat
         }
 
         private sealed class Building
@@ -421,6 +455,7 @@ namespace ResortEmpire.Game
             public Vector3 Target;
             public Vector3[] Waypoints;
             public int NextWaypoint;
+            public bool GoingHome;
         }
     }
 }
