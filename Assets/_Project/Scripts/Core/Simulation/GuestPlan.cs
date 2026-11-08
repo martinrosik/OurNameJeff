@@ -48,16 +48,20 @@ namespace ResortEmpire.Core
             // At least enough guests that nobody needs the same thing twice, at most one per unit.
             int guestCount = Math.Max(wave.GuestCount, (units.Count + needCount - 1) / needCount);
             guestCount = Math.Max(1, Math.Min(guestCount, units.Count));
-            int cap = (units.Count + guestCount - 1) / guestCount;
+            // Even shares: the first guests carry one unit more than the rest, so every one of the guestCount guests
+            // gets a unit (one shared cap let the first guests take everything, e.g. 11 guests instead of 12 in wave 1).
+            int baseCapacity = units.Count / guestCount;
+            int guestsWithOneMore = units.Count % guestCount;
 
             foreach (GuestVisit unit in units)
             {
                 PlannedGuest target = null;
-                foreach (PlannedGuest guest in guests)
+                for (int i = 0; i < guests.Count; i++)
                 {
-                    if (guest.Count < cap && !guest.Carries(unit.Need))
+                    int capacity = i < guestsWithOneMore ? baseCapacity + 1 : baseCapacity;
+                    if (guests[i].Count < capacity && !guests[i].Carries(unit.Need))
                     {
-                        target = guest;
+                        target = guests[i];
                         break;
                     }
                 }

@@ -31,7 +31,7 @@ namespace ResortEmpire.Game
             ResortGame game = controller != null ? controller.Game : null;
             if (game == null) return;
 
-            // Guests first: a building's seats and queue squares fill when its guests have walked in.
+            // Guests first: a building's seats fill when its guests have walked in.
             if (guests != null) guests.Refresh(game, this);
 
             foreach (BuildingView view in _buildings)
@@ -39,7 +39,7 @@ namespace ResortEmpire.Game
                 BuildingRuntime building = game.GetBuilding(view.Building);
                 if (guests != null && building != null)
                 {
-                    view.Refresh(game, guests.GetShownSeated(building.Need), guests.GetShownWaiting(building.Need));
+                    view.Refresh(game, guests.GetShownSeated(building.Need));
                 }
                 else
                 {

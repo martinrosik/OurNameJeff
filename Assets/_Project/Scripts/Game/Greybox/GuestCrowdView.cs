@@ -23,9 +23,10 @@ namespace ResortEmpire.Game
     /// </para>
     /// <para>
     /// A building's seat squares show the guests who are inside it right now: a square fills when a guest walks in
-    /// and empties when it walks out. Guests beyond the building's seats show as small queue squares. They follow
-    /// the walking guests, not the Core's seats: the Core seats a unit the moment it arrives, while the guest still
-    /// has to walk over, so its seat count would fill squares before anyone is there.
+    /// and empties when it walks out. They follow the walking guests, not the Core's seats: the Core seats a unit
+    /// the moment it arrives, while the guest still has to walk over, so its seat count would fill squares before
+    /// anyone is there. The queue dots under a building show the Core's queue instead (<see cref="BuildingView"/>),
+    /// so they always match the needs panel.
     /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
@@ -110,13 +111,6 @@ namespace ResortEmpire.Game
         {
             if (!_buildings.TryGetValue(need, out Building b)) return 0;
             return Mathf.Min(b.Inside, b.Seats);
-        }
-
-        /// <summary>Queue squares shown: guests inside beyond the building's seats.</summary>
-        public int GetShownWaiting(NeedId need)
-        {
-            if (!_buildings.TryGetValue(need, out Building b)) return 0;
-            return Mathf.Max(0, b.Inside - b.Seats);
         }
 
         /// <summary>Sends out guests whose first unit the Core has released. Called by <see cref="IslandView"/>.</summary>
@@ -240,7 +234,9 @@ namespace ResortEmpire.Game
 
                 default: // Inside: waits to be served here, then walks on to its next building or back to the boat
                     walker.InsideTime += dt;
-                    if (walker.InsideTime < GetServiceSeconds(walker.CurrentVisit) || !IsServed(walker.CurrentVisit)) return true;
+                    // Once the Core has served everyone, nobody sits out the rest of its service time (OUR-35: resolving is short).
+                    bool stayedLongEnough = walker.InsideTime >= GetServiceSeconds(walker.CurrentVisit) || _wave.IsFinished;
+                    if (!stayedLongEnough || !IsServed(walker.CurrentVisit)) return true;
 
                     if (walker.NextVisit >= walker.Guest.Count)
                     {

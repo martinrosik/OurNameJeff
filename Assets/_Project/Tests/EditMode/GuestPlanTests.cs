@@ -41,7 +41,7 @@ namespace ResortEmpire.Tests
                 }
 
                 Assert.AreEqual(0, plan.CountVisits(NeedId.Relax), "No Pool: no Relax visits (WR9).");
-                Assert.LessOrEqual(plan.Guests.Count, forecast.Guests, $"Wave {i + 1} uses at most its guests.");
+                Assert.AreEqual(forecast.Guests, plan.Guests.Count, $"Wave {i + 1} has exactly the guests the game announces.");
             }
         }
 

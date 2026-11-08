@@ -103,8 +103,7 @@ namespace ResortEmpire.Game
         }
 
         /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
-        /// <param name="waiting">Guests to show waiting; null shows the Core's count.</param>
-        public void Refresh(ResortGame game, int? seated = null, int? waiting = null)
+        public void Refresh(ResortGame game, int? seated = null)
         {
             BuildingRuntime runtime = game.GetBuilding(building);
             if (runtime == null)
@@ -118,7 +117,8 @@ namespace ResortEmpire.Game
 
             ShowState(game.GetBuildingState(building));
             ShowSeats(runtime.Seats, seated ?? game.GetSeatedCount(building));
-            ShowQueue(waiting ?? game.GetNeedStatus(runtime.Need).Waiting);
+            // The queue dots show the Core's queue, the same number as the needs panel (OUR-37).
+            ShowQueue(game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
         }
 

@@ -265,7 +265,7 @@ namespace ResortEmpire.Tests
 
                 Assert.AreEqual(firstVisits, guests.GetDeliveredCount(need), $"{id}: guests whose first need is {need}.");
                 Assert.AreEqual(Mathf.Min(3, firstVisits), view.ShownSeated, $"{id}: seats taken by those guests.");
-                Assert.AreEqual(Mathf.Max(0, firstVisits - 3), view.ShownWaiting, $"{id}: the rest as queue squares.");
+                Assert.AreEqual(Game.GetNeedStatus(need).Waiting, view.ShownWaiting, $"{id}: queue squares match the needs panel.");
             }
         }
 
@@ -527,7 +527,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(90 + empty, allServed, 0.1, "The last Food guest (90 s) on the empty Restaurant is done 36.4 s later.");
             Assert.AreEqual(GamePhase.WaveComplete, Game.Phase, "The wave ends once the last guest has boarded.");
             Assert.Greater(lastBoarded, allServed, "Guests still walk back to the boat after the last service.");
-            Assert.Less(lastBoarded, allServed + 30, "The walk back takes seconds, not minutes.");
+            Assert.Less(lastBoarded, allServed + 10, "Once everyone is served the guests only walk back: WAVE_RESOLVING is short (OUR-35).");
         }
 
         /// <summary>Plays the wave that was just started until every guest is back on the boat.</summary>
@@ -560,7 +560,7 @@ namespace ResortEmpire.Tests
             Assert.IsTrue(_ui.WaveComplete.IsVisible);
             Assert.AreEqual("WAVE 1 COMPLETE", _ui.WaveComplete.TitleText);
             Assert.AreEqual("Wave 1 has ended. Well done!", _ui.WaveComplete.MessageText);
-            Assert.AreEqual("12/12", _ui.WaveComplete.GuestsServedText);
+            Assert.AreEqual("12/12", _ui.WaveComplete.StatText);
             Assert.IsFalse(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Continue is the only main button.");
         }
 
@@ -599,7 +599,135 @@ namespace ResortEmpire.Tests
 
             Assert.IsTrue(_ui.WaveComplete.IsVisible);
             Assert.AreEqual("WAVE 2 COMPLETE", _ui.WaveComplete.TitleText);
-            Assert.AreEqual("18/18", _ui.WaveComplete.GuestsServedText);
+            Assert.AreEqual("18/18", _ui.WaveComplete.StatText);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR45_ABuildingThatIsCatchingUpIsNotCalledTooSmall()
+        {
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 20;
+            try
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                Assert.AreEqual(NeedState.Recovering, Game.GetNeedState(NeedId.Food));
+                Assert.Greater(Game.GetNeedStatus(NeedId.Food).Waiting, Game.Config.wave.bottleneckThreshold);
+
+                _ui.OpenWorkerAllocation(BuildingId.Restaurant);
+                yield return null;
+
+                StringAssert.DoesNotContain("too small", _ui.Workers.SubtitleText);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OUR45_ABuildingWhoseQueueStillGrowsWithAWorkerIsCalledTooSmall()
+        {
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 40;
+            try
+            {
+                Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                for (int i = 0; i < 60; i++) Game.Tick(1);
+                Assert.AreEqual(NeedState.Bottleneck, Game.GetNeedState(NeedId.Food));
+
+                _ui.OpenWorkerAllocation(BuildingId.Restaurant);
+                yield return null;
+
+                StringAssert.Contains("too small", _ui.Workers.SubtitleText);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OUR45_TheSheetKeepsItsNumbersCurrentWhileOpen()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 20);
+            _ui.OpenWorkerAllocation(BuildingId.Restaurant);
+            yield return null;
+            string before = _ui.Workers.Options[0].GetComponentInChildren<TMPro.TMP_Text>().text;
+
+            Game.Tick(30);
+            yield return null;
+
+            NeedStatus rooms = Game.GetNeedStatus(NeedId.Rooms);
+            NeedStatus food = Game.GetNeedStatus(NeedId.Food);
+            string after = _ui.Workers.Options[0].GetComponentInChildren<TMPro.TMP_Text>().text;
+            Assert.AreNotEqual(before, after, "The numbers moved on while the sheet was open.");
+            StringAssert.Contains($"Rooms: {rooms.Served}/{rooms.Total} served, {rooms.Waiting} waiting", after);
+            StringAssert.Contains($"Food: {food.Served}/{food.Total} served, {food.Waiting} waiting", _ui.Workers.SubtitleText);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR35_InEveryWaveTheGuestsLeaveSoonAfterTheLastService()
+        {
+            const float step = 0.05f;
+            GuestCrowdView guests = _island.Guests;
+            for (int wave = 0; wave < Game.Config.waves.Count; wave++)
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration);
+                double resolving = 0;
+                while (Game.Phase != GamePhase.WaveComplete && resolving < 60)
+                {
+                    Game.Tick(step);
+                    guests.FastForward(step);
+                    _island.Refresh();
+                    if (Game.Phase != GamePhase.WaveActive) resolving += step;
+                }
+
+                Assert.Less(resolving, 8, $"Wave {wave + 1}: once everyone is served the guests only walk back (OUR-35).");
+                Game.ContinueAfterWave();
+                yield return null;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator AfterTheLastWaveTheDimmedCardOffersPlayAgain()
+        {
+            ResortGame finishedGame = Game;
+            int waves = Game.Config.waves.Count;
+            for (int wave = 0; wave < waves; wave++)
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer + 600);
+                yield return null;
+                _island.Guests.FastForward(300f);
+                yield return null;
+                yield return null;
+                Assert.AreEqual(GamePhase.WaveComplete, Game.Phase, $"Wave {wave + 1} is complete.");
+                _ui.WaveComplete.ContinueButton.onClick.Invoke();
+                yield return null;
+            }
+
+            Assert.IsFalse(Game.HasNextWave);
+            Assert.IsTrue(_ui.WaveComplete.IsVisible, "The dimmed card stays up after the last wave.");
+            Assert.AreEqual("ALL WAVES PLAYED", _ui.WaveComplete.TitleText);
+            Assert.AreEqual($"{waves}/{waves}", _ui.WaveComplete.StatText);
+            StringAssert.Contains("PLAY AGAIN", _ui.WaveComplete.ContinueButton.GetComponentInChildren<TMPro.TMP_Text>().text);
+
+            _ui.WaveComplete.ContinueButton.onClick.Invoke();
+            yield return null;
+
+            Assert.AreNotSame(finishedGame, Game, "Play Again starts a new game.");
+            Assert.AreEqual(GamePhase.AwaitingWave, Game.Phase);
+            Assert.AreEqual(1, Game.GetNextWaveForecast().WaveNumber);
+            Assert.IsFalse(_ui.WaveComplete.IsVisible);
+            Assert.IsTrue(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Welcome Guests is back.");
+            Assert.IsFalse(Game.GetBuilding(BuildingId.Restaurant).HasWorker, "Workers start where the config puts them.");
         }
     }
 }

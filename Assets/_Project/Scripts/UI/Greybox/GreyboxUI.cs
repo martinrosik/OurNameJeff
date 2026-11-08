@@ -102,6 +102,9 @@ namespace ResortEmpire.UI
         /// <summary>OUR-40: Continue pressed on Wave Complete.</summary>
         internal void ContinueAfterWave() => _game.ContinueAfterWave();
 
+        /// <summary>Play Again pressed after the last wave: a new game from wave 1 (OnGameCreated takes it over).</summary>
+        internal void PlayAgain() => controller.NewGame();
+
         private void OnGameCreated(ResortGame game)
         {
             _game = game;

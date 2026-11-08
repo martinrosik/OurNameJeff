@@ -118,7 +118,7 @@ namespace ResortEmpire.UI
             WaveForecast forecast = game.GetNextWaveForecast();
             if (forecast == null)
             {
-                _title.text = "ALL WAVES PLAYED";
+                _title.text = GameText.AllWavesPlayedTitle;
                 _subtitle.text = string.Empty;
                 HideRowsFrom(0);
                 _note.text = string.Empty;

@@ -28,7 +28,7 @@ namespace ResortEmpire.UI
             int wave = game.CurrentWaveIndex + 1;
             switch (game.Phase)
             {
-                case GamePhase.AwaitingWave: return game.HasNextWave ? "READY FOR GUESTS" : "ALL WAVES PLAYED";
+                case GamePhase.AwaitingWave: return game.HasNextWave ? "READY FOR GUESTS" : AllWavesPlayedTitle;
                 case GamePhase.WaveIncoming: return "BOAT ARRIVING";
                 case GamePhase.WaveActive: return $"WAVE {wave} IN PROGRESS";
                 case GamePhase.WavePaused: return "PAUSED";
@@ -87,5 +87,13 @@ namespace ResortEmpire.UI
 
         /// <summary>Everyone is always served (WR4), so both numbers are the wave's guests.</summary>
         public static string GuestsServed(WaveResult result) => $"{result.Guests}/{result.Guests}";
+
+        // After the last wave: the same card, with Play Again.
+        public const string AllWavesPlayedTitle = "ALL WAVES PLAYED";
+        public const string AllWavesPlayedMessage = "Every wave of guests had a great stay!";
+        public const string WavesCompletedLabel = "Waves completed";
+        public const string PlayAgainLabel = "PLAY AGAIN";
+
+        public static string WavesCompleted(ResortGame game) => $"{game.CompletedWaves}/{game.Config.waves.Count}";
     }
 }

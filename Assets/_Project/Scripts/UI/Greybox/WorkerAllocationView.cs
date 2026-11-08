@@ -67,6 +67,8 @@ namespace ResortEmpire.UI
         /// <summary>The building whose sheet is open.</summary>
         public BuildingId Building { get; private set; }
 
+        public string SubtitleText => _subtitle.text;
+
         /// <summary>The option buttons shown, in order (tests click them).</summary>
         public IReadOnlyList<Button> Options
         {
@@ -94,11 +96,20 @@ namespace ResortEmpire.UI
 
         public void Close() => _root.SetActive(false);
 
-        /// <summary>Called every frame while open: closes the sheet once moving is no longer allowed (the wave ended).</summary>
+        /// <summary>
+        /// Called every frame while open: keeps the numbers current, and closes the sheet once moving is no longer
+        /// allowed (the wave ended).
+        /// </summary>
         public void Refresh(ResortGame game)
         {
             if (!IsOpen) return;
-            if (game == null || !game.CanMoveWorkers) Close();
+            if (game == null || !game.CanMoveWorkers)
+            {
+                Close();
+                return;
+            }
+
+            Show(game);
         }
 
         private void Show(ResortGame game)
@@ -175,9 +186,10 @@ namespace ResortEmpire.UI
                 return $"No Worker: serving slowly. {activity}. Take a Worker from another building:";
             }
 
-            int waiting = game.GetNeedStatus(building.Need).Waiting;
-            if (waiting > 4)
+            // Too small only while the queue still grows with a Worker (BOTTLENECK), not while it is catching up.
+            if (game.GetNeedState(building.Need) == NeedState.Bottleneck)
             {
+                int waiting = game.GetNeedStatus(building.Need).Waiting;
                 return $"Has its Worker, but the queue is long ({waiting}): the building is too small. Upgrade it after the wave.";
             }
 
