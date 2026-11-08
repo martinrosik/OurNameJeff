@@ -221,7 +221,7 @@ namespace ResortEmpire.Tests
             GuestCrowdView guests = _island.Guests;
 
             Game.StartWave();
-            Game.Tick(Game.Config.wave.incomingDuration + 11.3); // Rooms unit 0 seated at 11.25 s, served at 11.58 s
+            Game.Tick(Game.Config.wave.incomingDuration + 11.3); // Rooms unit 0 seated at 11.25 s, served at 23.25 s
             yield return null;
             guests.FastForward(20f);
             yield return null;
@@ -232,7 +232,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(1, guests.InsideCount);
             Assert.AreEqual(0, guests.WalkingCount);
 
-            Game.Tick(0.3); // OUR-46: served 0.33 s after sitting down
+            Game.CurrentWave.FinishService(NeedId.Rooms); // OUR-46: served (12 s after sitting down)
             yield return null;
             guests.FastForward(0.1f);
 
@@ -279,7 +279,7 @@ namespace ResortEmpire.Tests
             yield return null;
             guests.FastForward(60f);
 
-            // Normally everyone is served by now (0.33 s / 1 s per guest); finish anyone left directly.
+            // Some guests are still being served (12 s / 36 s per guest); finish them directly.
             foreach (NeedId need in new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food })
             {
                 while (Game.CurrentWave.FinishService(need)) { }

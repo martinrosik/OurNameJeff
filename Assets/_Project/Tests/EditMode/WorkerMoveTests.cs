@@ -6,7 +6,7 @@ namespace ResortEmpire.Tests
 {
     /// <summary>
     /// OUR-45: moving Workers before and during the wave. Baseline: Reception and Beach Bar have a Worker, the
-    /// Restaurant doesn't; service 0.33 s with a Worker, 1 s without; Food unit 0 arrives at 15 s.
+    /// Restaurant doesn't; service 12 s with a Worker, about 36 s without (Build doc); Food unit 0 arrives at 15 s.
     /// </summary>
     public class WorkerMoveTests
     {
@@ -73,7 +73,7 @@ namespace ResortEmpire.Tests
         {
             var game = new ResortGame(_config);
             game.StartWave();
-            game.Tick(95);
+            game.Tick(300); // everyone served
             Assert.AreEqual(GamePhase.WaveResolving, game.Phase);
             Assert.IsFalse(game.CanMoveWorkers);
             Assert.AreEqual(WorkerMoveResult.NotAllowedNow, game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant));
@@ -87,15 +87,15 @@ namespace ResortEmpire.Tests
         {
             var game = new ResortGame(_config);
             game.StartWave();
-            game.Tick(15.5); // the Food guest at the empty Restaurant is half done (0.5 s of 1 s)
+            game.Tick(15 + 6 / 0.33); // the Food guest at the empty Restaurant is half done (18.18 s of 36.36 s)
 
-            game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant); // the rest takes 0.5 × 0.33 = 0.165 s
-            Assert.AreEqual(1.0, game.GetServiceSeconds(BuildingId.Reception), 1e-6, "The Reception is slow now.");
+            game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant); // the rest takes half of 12 s = 6 s
+            Assert.AreEqual(12 / 0.33, game.GetServiceSeconds(BuildingId.Reception), 1e-4, "The Reception is slow now.");
 
-            game.Tick(0.16);
+            game.Tick(5.99);
             Assert.AreEqual(0, game.GetNeedStatus(NeedId.Food).Served);
 
-            game.Tick(0.01);
+            game.Tick(0.02);
             Assert.AreEqual(1, game.GetNeedStatus(NeedId.Food).Served);
         }
 
@@ -106,7 +106,7 @@ namespace ResortEmpire.Tests
             game.MoveWorker(BuildingId.BeachBar, BuildingId.Restaurant);
 
             game.StartWave();
-            game.Tick(95);
+            game.Tick(300);
             game.FinishResolving();
 
             Assert.AreEqual(GamePhase.WaveComplete, game.Phase);

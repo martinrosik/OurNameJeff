@@ -7,8 +7,8 @@ using ResortEmpire.Editor;
 namespace ResortEmpire.Tests
 {
     /// <summary>
-    /// OUR-38 / OUR-39: need (building) states of Build doc §4.4, AC1 and AC2. Uses the Build doc service time
-    /// (12 s per guest per seat), because with the Jira 0.33 s no queue ever forms (design-conflicts row 10).
+    /// OUR-38 / OUR-39: need (building) states of Build doc §4.4, AC1 and AC2, with the Build doc service time
+    /// (12 s per guest per seat).
     /// The Restaurant starts without a Worker: 0.33 utilization, 3 seats = 0.0825 guests/s.
     /// </summary>
     public class NeedStateTests
@@ -159,7 +159,6 @@ namespace ResortEmpire.Tests
         [Test]
         public void WaveOneWithTheDefaultConfigNeverWarnsAndEndsSatisfied()
         {
-            _config.wave.serviceTime = 0.33f;
             (ResortGame game, var changes) = Start();
 
             RunTo(game, 200, 0.5);

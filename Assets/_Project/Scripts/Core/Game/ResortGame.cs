@@ -107,7 +107,7 @@ namespace ResortEmpire.Core
 
         /// <summary>
         /// OUR-46 / OUR-47: seconds one seat of a building takes to serve one guest right now
-        /// (serviceTime ÷ utilization: 0.33 s with a Worker, 1 s without, with the prototype config).
+        /// (serviceTime ÷ utilization: 12 s with a Worker, about 36 s without, with the prototype config).
         /// </summary>
         public double GetServiceSeconds(BuildingId building)
         {
