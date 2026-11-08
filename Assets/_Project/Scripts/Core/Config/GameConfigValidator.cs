@@ -19,6 +19,7 @@ namespace ResortEmpire.Core
             }
 
             if (config.wave == null) errors.Add("Wave settings are missing.");
+            else if (config.wave.waveTimer < 1f) errors.Add($"Wave timer must be at least 1 s (is {config.wave.waveTimer}).");
 
             ValidateNeeds(config, errors);
             ValidateBuildings(config, errors);

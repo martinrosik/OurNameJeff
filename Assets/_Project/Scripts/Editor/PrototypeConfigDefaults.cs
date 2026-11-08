@@ -18,7 +18,11 @@ namespace ResortEmpire.Editor
         {
             var config = ScriptableObject.CreateInstance<GameConfig>();
             config.name = "Config_Prototype";
-            config.wave = new WaveSettings();
+            config.wave = new WaveSettings
+            {
+                incomingDuration = 3f,
+                waveTimer = 90f, // OUR-34: arrival phase (Build doc §4.8 wave_timer)
+            };
 
             config.needs = new List<NeedDefinition>
             {

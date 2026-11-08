@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.Core::ResortEmpire.Core.GameConfig
   wave:
     incomingDuration: 3
+    waveTimer: 90
   needs:
   - need: 0
     displayName: Rooms

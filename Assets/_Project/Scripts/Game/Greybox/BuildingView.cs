@@ -12,6 +12,7 @@ namespace ResortEmpire.Game
     /// <item><b>OUR-50 capacity</b>: one seat square per seat (3 at level 1); a seat fills when a guest sits there.</item>
     /// <item><b>OUR-48 Worker</b>: a green "W" badge when a Worker stands here, a grey badge and "No Worker" when not.
     /// The empty building must look unstaffed at a glance (Build doc §4.5).</item>
+    /// <item><b>OUR-34 queue</b>: one small dot per guest waiting for a seat, 2 rows of 6, then "+N".</item>
     /// </list>
     /// </summary>
     public sealed class BuildingView : MonoBehaviour
@@ -19,6 +20,11 @@ namespace ResortEmpire.Game
         private const float SeatSize = 0.22f;
         private const float SeatSpacing = 0.29f;
         private const int SeatSortingOrder = 7;
+        private const float QueueDotSize = 0.13f;
+        private const float QueueDotSpacing = 0.17f;
+        private const int QueueDotsPerRow = 6;
+        private const int QueueRows = 2;
+        private const int QueueMaxDots = QueueDotsPerRow * QueueRows;
 
         [SerializeField] private BuildingId building;
 
@@ -37,7 +43,12 @@ namespace ResortEmpire.Game
         [SerializeField] private Transform markersRoot;
         [SerializeField] private Sprite seatSprite;
 
+        [Tooltip("OUR-34: local y of the first row of waiting-guest dots, under the plate.")]
+        [SerializeField] private float queueY = -1.1f;
+
         private readonly List<SpriteRenderer> _seats = new List<SpriteRenderer>();
+        private readonly List<SpriteRenderer> _queueDots = new List<SpriteRenderer>();
+        private TextMeshPro _queueOverflow;
 
         public BuildingId Building => building;
 
@@ -46,6 +57,9 @@ namespace ResortEmpire.Game
 
         /// <summary>Seat squares currently shown (OUR-50).</summary>
         public int ShownSeats { get; private set; }
+
+        /// <summary>Guests shown waiting in front of the building (OUR-34).</summary>
+        public int ShownWaiting { get; private set; }
 
         /// <summary>Whether the "W" badge is shown (OUR-48).</summary>
         public bool ShowsWorker { get; private set; }
@@ -65,7 +79,71 @@ namespace ResortEmpire.Game
             nameLabel.text = runtime.Definition.displayName;
 
             ShowSeats(runtime.Seats, game.GetSeatedCount(building));
+            ShowQueue(game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
+        }
+
+        private void ShowQueue(int waiting)
+        {
+            if (waiting == ShownWaiting) return;
+            ShownWaiting = waiting;
+
+            int dots = Mathf.Min(waiting, QueueMaxDots);
+            while (_queueDots.Count < dots)
+            {
+                var go = new GameObject("QueueDot");
+                go.transform.SetParent(markersRoot, false);
+                go.transform.localScale = new Vector3(QueueDotSize, QueueDotSize, 1f);
+                var dot = go.AddComponent<SpriteRenderer>();
+                dot.sprite = seatSprite;
+                dot.color = GreyboxPalette.Guest;
+                dot.sortingOrder = SeatSortingOrder;
+                _queueDots.Add(dot);
+            }
+
+            for (int i = 0; i < _queueDots.Count; i++)
+            {
+                bool visible = i < dots;
+                _queueDots[i].gameObject.SetActive(visible);
+                if (!visible) continue;
+
+                int row = i / QueueDotsPerRow;
+                int column = i % QueueDotsPerRow;
+                _queueDots[i].transform.localPosition = new Vector3(
+                    (column - (QueueDotsPerRow - 1) * 0.5f) * QueueDotSpacing,
+                    queueY - row * QueueDotSpacing,
+                    0f);
+            }
+
+            int overflow = waiting - dots;
+            if (overflow > 0 && _queueOverflow == null) _queueOverflow = CreateQueueOverflowLabel();
+            if (_queueOverflow != null)
+            {
+                _queueOverflow.gameObject.SetActive(overflow > 0);
+                _queueOverflow.text = overflow > 0 ? $"+{overflow}" : string.Empty;
+            }
+        }
+
+        private TextMeshPro CreateQueueOverflowLabel()
+        {
+            // TextMeshPro resets its own RectTransform when added, so position a plain parent instead.
+            var anchor = new GameObject("QueueOverflow");
+            anchor.transform.SetParent(markersRoot, false);
+            float rowsWidth = QueueDotsPerRow * QueueDotSpacing * 0.5f;
+            anchor.transform.localPosition = new Vector3(rowsWidth + 0.2f, queueY - (QueueRows - 1) * QueueDotSpacing * 0.5f, 0f);
+
+            var go = new GameObject("Text");
+            go.transform.SetParent(anchor.transform, false);
+            var label = go.AddComponent<TextMeshPro>();
+            label.rectTransform.sizeDelta = new Vector2(0.6f, 0.3f);
+            label.fontSize = 2.2f;
+            label.color = GreyboxPalette.Guest;
+            label.fontStyle = FontStyles.Bold;
+            label.alignment = TextAlignmentOptions.Left;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Overflow;
+            label.sortingOrder = 10;
+            return label;
         }
 
         private void ShowWorker(bool hasWorker)

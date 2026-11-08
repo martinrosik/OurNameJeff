@@ -7,8 +7,9 @@ namespace ResortEmpire.Core
     /// The game in plain C# (no Unity scene access), so it runs the same in EditMode tests and in the game.
     /// <para>
     /// Implemented now: the starting island (OUR-31), Workers placed from the config (shown by OUR-48),
-    /// building capacity (shown by OUR-50), the next-wave forecast (OUR-33) and the manual wave start (OUR-27):
-    /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE. The wave then stays in progress until the
+    /// building capacity (shown by OUR-50), the next-wave forecast (OUR-33), the manual wave start (OUR-27):
+    /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE, and guest arrivals over the 90 s arrival phase
+    /// (OUR-34, <see cref="WaveSimulation"/>). The wave then stays in progress until the
     /// teammates' tickets add guests and the wave end. Each one has a <c>// OUR-xx</c> hook below and a guide in
     /// <c>docs/tasks/</c>.
     /// </para>
@@ -51,6 +52,12 @@ namespace ResortEmpire.Core
         /// <summary>Seconds of WAVE_ACTIVE so far. OUR-34 uses it for the 90 s arrival phase.</summary>
         public double WaveTime { get; private set; }
 
+        /// <summary>
+        /// OUR-34: the wave being played (arrivals, queues, seats). Created by <see cref="StartWave"/>, null before
+        /// the first wave.
+        /// </summary>
+        public WaveSimulation CurrentWave { get; private set; }
+
         /// <summary>Seconds left of WAVE_INCOMING (the boat sailing in).</summary>
         public double IncomingRemaining => Phase == GamePhase.WaveIncoming ? _incomingRemaining : 0;
 
@@ -77,13 +84,17 @@ namespace ResortEmpire.Core
 
         /// <summary>
         /// Guests currently being served at a building (fills OUR-50's seat squares).
-        /// Always 0 for now: there are no guests until OUR-34 (arrivals) and OUR-46/47 (service) exist.
+        /// Seats fill as guests arrive (OUR-34); they empty again once service exists (OUR-46/47).
         /// </summary>
         public int GetSeatedCount(BuildingId building)
         {
-            // OUR-34 / OUR-46 / OUR-47: return how many guests sit at this building's seats during the wave.
-            return 0;
+            BuildingRuntime runtime = GetBuilding(building);
+            return runtime == null ? 0 : GetNeedStatus(runtime.Need).Seated;
         }
+
+        /// <summary>OUR-34: live numbers of a need in the current wave (all zero outside a wave).</summary>
+        public NeedStatus GetNeedStatus(NeedId need) =>
+            CurrentWave != null ? CurrentWave.GetNeedStatus(need) : new NeedStatus(need, 0, 0, 0, 0, 0);
 
         /// <summary>OUR-33: "Next wave: Rooms 8 · Drinks 8 · Food 6" before Start Wave. Null after the last wave.</summary>
         public WaveForecast GetNextWaveForecast() => HasNextWave ? GetForecast(CompletedWaves) : null;
@@ -113,6 +124,10 @@ namespace ResortEmpire.Core
             }
 
             WaveTime = 0;
+            CurrentWave = new WaveSimulation(
+                GetForecast(CompletedWaves),
+                Config.wave.waveTimer,
+                need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;
@@ -147,6 +162,8 @@ namespace ResortEmpire.Core
             WaveTime += deltaSeconds;
 
             // OUR-34: release this wave's demand evenly over the 90 s arrival phase (unit k at (k+1)·90/N s).
+            CurrentWave.AdvanceTo(WaveTime);
+
             // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             // OUR-38 / OUR-39: update each need's state (queue growing → BOTTLENECK, catching up → RECOVERING).
             // OUR-41: after 90 s no new guests come, but the queues are still served until they are empty.

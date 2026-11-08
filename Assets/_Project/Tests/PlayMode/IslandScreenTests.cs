@@ -101,5 +101,18 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(GamePhase.WaveActive, Game.Phase);
             Assert.AreEqual("WAVE 1 IN PROGRESS", _ui.Hud.StatusText);
         }
+
+        [UnityTest]
+        public IEnumerator OUR34_ArrivingGuestsFillSeatsThenQueueInFrontOfTheBuilding()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer);
+            yield return null;
+
+            BuildingView reception = _island.GetView(BuildingId.Reception);
+            Assert.AreEqual(3, Game.GetSeatedCount(BuildingId.Reception));
+            Assert.AreEqual(5, reception.ShownWaiting, "Rooms 8: 3 seated, 5 waiting.");
+            Assert.AreEqual(3, _island.GetView(BuildingId.Restaurant).ShownWaiting, "Food 6: 3 seated, 3 waiting.");
+        }
     }
 }
