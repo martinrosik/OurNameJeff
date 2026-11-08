@@ -1,6 +1,8 @@
 using ResortEmpire.Core;
 using ResortEmpire.Game;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace ResortEmpire.UI
@@ -8,7 +10,8 @@ namespace ResortEmpire.UI
     /// <summary>
     /// Root of the greybox UI. Builds the canvas at runtime (landscape, 852×393 reference like the Figma frames)
     /// with S1: the resort status, the next-wave forecast (OUR-33) and Welcome Guests (OUR-27).
-    /// The Wave Needs Panel (OUR-37), Worker moving (OUR-45) and the wave-end info (OUR-40) plug in here later;
+    /// OUR-45: tapping a building opens the Worker allocation sheet (<see cref="WorkerAllocationView"/>).
+    /// The Wave Needs Panel (OUR-37) and the wave-end info (OUR-40) plug in here later;
     /// the side area to the right is reserved for the needs panel during the wave.
     /// UI reads game state and sends player intents; it never changes rules.
     /// </summary>
@@ -23,8 +26,11 @@ namespace ResortEmpire.UI
 
         private ResortGame _game;
         private HudView _hud;
+        private WorkerAllocationView _workers;
+        private IslandView _island;
 
         internal HudView Hud => _hud;
+        internal WorkerAllocationView Workers => _workers;
         internal ResortGame Game => _game;
 
         /// <summary>The area right of the island, below the top bar (forecast now; needs panel OUR-37 during the wave).</summary>
@@ -45,6 +51,7 @@ namespace ResortEmpire.UI
             UIFactory.Init(roundedSprite);
             Build();
             _game = controller.Game;
+            _island = FindAnyObjectByType<IslandView>();
             controller.GameCreated += OnGameCreated;
         }
 
@@ -53,15 +60,40 @@ namespace ResortEmpire.UI
             if (controller != null) controller.GameCreated -= OnGameCreated;
         }
 
+        private void Update()
+        {
+            // OUR-45: a tap (released press) on a building, not on the UI, opens its Worker allocation sheet.
+            if (_game == null || _island == null || _workers.IsOpen) return;
+            Pointer pointer = Pointer.current;
+            if (pointer == null || !pointer.press.wasReleasedThisFrame) return;
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
+            Camera camera = Camera.main;
+            if (camera == null) return;
+            Vector2 screen = pointer.position.ReadValue();
+            Vector3 world = camera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, -camera.transform.position.z));
+            BuildingView building = _island.GetBuildingAt(world);
+            if (building != null) OpenWorkerAllocation(building.Building);
+        }
+
         private void LateUpdate()
         {
-            if (_game != null) _hud.Refresh(_game);
+            if (_game == null) return;
+            _hud.Refresh(_game);
+            _workers.Refresh(_game);
         }
+
+        /// <summary>OUR-45: opens the Worker allocation sheet for a building (a tap on the island).</summary>
+        internal void OpenWorkerAllocation(BuildingId building) => _workers.Open(_game, building);
 
         /// <summary>OUR-27: Welcome Guests pressed.</summary>
         internal void StartWave() => _game.StartWave();
 
-        private void OnGameCreated(ResortGame game) => _game = game;
+        private void OnGameCreated(ResortGame game)
+        {
+            _game = game;
+            _workers.Close();
+        }
 
         private void Build()
         {
@@ -94,6 +126,7 @@ namespace ResortEmpire.UI
             IslandArea.Fill(Margin, SidePanelWidth + Margin * 2, TopBarHeight, Margin);
 
             _hud = new HudView(this, safe, SideArea, IslandArea);
+            _workers = new WorkerAllocationView(this, safe); // last, so it draws over the HUD
         }
     }
 }

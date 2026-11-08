@@ -20,8 +20,8 @@ namespace ResortEmpire.Core
         public int Level { get; internal set; }
 
         /// <summary>
-        /// Whether a Worker stands here (OUR-48 shows it). Set from the config at the start; moving Workers is
-        /// OUR-45.
+        /// Whether a Worker stands here (OUR-48 shows it). Set from the config at the start, changed by
+        /// <see cref="ResortGame.MoveWorker"/> (OUR-45).
         /// </summary>
         public bool HasWorker { get; internal set; }
 

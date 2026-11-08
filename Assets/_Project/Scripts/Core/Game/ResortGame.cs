@@ -84,6 +84,9 @@ namespace ResortEmpire.Core
         /// <summary>OUR-35: raised when a wave reaches WAVE_COMPLETE. OUR-40 tells the player.</summary>
         public event Action<WaveResult> WaveCompleted;
 
+        /// <summary>OUR-45: a Worker moved from the first building to the second.</summary>
+        public event Action<BuildingId, BuildingId> WorkerMoved;
+
         /// <summary>OUR-35: the result of the last finished wave (null before the first one).</summary>
         public WaveResult LastWaveResult { get; private set; }
 
@@ -91,12 +94,22 @@ namespace ResortEmpire.Core
 
         /// <summary>
         /// Guests currently being served at a building (fills OUR-50's seat squares).
-        /// Seats fill as guests arrive (OUR-34); they empty again once service exists (OUR-46/47).
+        /// Seats fill as guests arrive (OUR-34) and empty as they are served (OUR-46/47).
         /// </summary>
         public int GetSeatedCount(BuildingId building)
         {
             BuildingRuntime runtime = GetBuilding(building);
             return runtime == null ? 0 : GetNeedStatus(runtime.Need).Seated;
+        }
+
+        /// <summary>
+        /// OUR-46 / OUR-47: seconds one seat of a building takes to serve one guest right now
+        /// (serviceTime ÷ utilization: 0.33 s with a Worker, 1 s without, with the prototype config).
+        /// </summary>
+        public double GetServiceSeconds(BuildingId building)
+        {
+            BuildingRuntime runtime = GetBuilding(building);
+            return Config.wave.GetServiceSeconds(runtime != null && runtime.HasWorker);
         }
 
         /// <summary>OUR-34: live numbers of a need in the current wave (all zero outside a wave).</summary>
@@ -122,6 +135,37 @@ namespace ResortEmpire.Core
             return new WaveForecast(waveIndex, wave.guests, demand);
         }
 
+        /// <summary>
+        /// OUR-45: Workers can be moved before the wave (AWAITING_WAVE), while the boat comes in and during the wave,
+        /// including the drain after 90 s. Not while the wave resolves or on the result.
+        /// </summary>
+        public bool CanMoveWorkers =>
+            Phase == GamePhase.AwaitingWave || Phase == GamePhase.WaveIncoming || Phase == GamePhase.WaveActive;
+
+        /// <summary>
+        /// OUR-45: moves a Worker between buildings. Free and instant, no confirmation (WR5). Workers are anonymous;
+        /// with one slot per building and one fewer Worker than buildings, a move is always "pick which building to
+        /// leave empty". During a wave the new speeds apply at once, also to guests already seated (OUR-46/47).
+        /// The placement stays for the next waves.
+        /// </summary>
+        public WorkerMoveResult MoveWorker(BuildingId from, BuildingId to)
+        {
+            if (!CanMoveWorkers) return WorkerMoveResult.NotAllowedNow;
+
+            BuildingRuntime source = GetBuilding(from);
+            BuildingRuntime target = GetBuilding(to);
+            if (source == null || target == null) return WorkerMoveResult.BuildingNotOnIsland;
+            if (from == to) return WorkerMoveResult.SameBuilding;
+            if (!source.HasWorker) return WorkerMoveResult.NoWorkerAtSource;
+            if (target.HasWorker) return WorkerMoveResult.TargetFull;
+
+            // The time up to now was already simulated at the old speeds; the next Tick uses the new ones.
+            source.HasWorker = false;
+            target.HasWorker = true;
+            WorkerMoved?.Invoke(from, to);
+            return WorkerMoveResult.Moved;
+        }
+
         /// <summary>OUR-27: the player starts the wave manually. AWAITING_WAVE → WAVE_INCOMING.</summary>
         public bool StartWave()
         {
@@ -134,7 +178,8 @@ namespace ResortEmpire.Core
             CurrentWave = new WaveSimulation(
                 GetForecast(CompletedWaves),
                 Config.wave.waveTimer,
-                need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0);
+                need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0,
+                GetServiceSpeed);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;
@@ -169,9 +214,9 @@ namespace ResortEmpire.Core
             WaveTime += deltaSeconds;
 
             // OUR-34: release this wave's demand evenly over the 90 s arrival phase (unit k at (k+1)·90/N s).
+            // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             CurrentWave.AdvanceTo(WaveTime);
 
-            // OUR-46 / OUR-47: serve seated guests at full speed with a Worker, about a third of it without.
             // OUR-38 / OUR-39: update each need's state (queue growing → BOTTLENECK, catching up → RECOVERING).
             // OUR-41: after 90 s no new guests come (CurrentWave.ArrivalsClosed), but nobody leaves: the queues are
             // still served until they are empty (WR3, WR4). Nothing ends the wave on a timer.
@@ -197,6 +242,13 @@ namespace ResortEmpire.Core
             SetPhase(GamePhase.WaveComplete);
             WaveCompleted?.Invoke(LastWaveResult);
             return true;
+        }
+
+        /// <summary>OUR-46 / OUR-47: progress per second of a seated unit of <paramref name="need"/>.</summary>
+        private double GetServiceSpeed(NeedId need)
+        {
+            BuildingDefinition definition = Config.GetBuildingForNeed(need);
+            return definition == null ? 0 : 1.0 / GetServiceSeconds(definition.building);
         }
 
         private void SetPhase(GamePhase phase)

@@ -70,6 +70,26 @@ namespace ResortEmpire.Game
 
         public string StatusText => statusLabel != null ? statusLabel.text : string.Empty;
 
+        /// <summary>OUR-45: whether a world point is on the building (its art or patio plate), for taps.</summary>
+        public bool Contains(Vector2 worldPoint)
+        {
+            if (!gameObject.activeInHierarchy) return false;
+            if (body != null && Hits(body, worldPoint)) return true;
+            foreach (SpriteRenderer sprite in art)
+            {
+                if (sprite != null && Hits(sprite, worldPoint)) return true;
+            }
+
+            return false;
+        }
+
+        private static bool Hits(SpriteRenderer sprite, Vector2 point)
+        {
+            if (!sprite.enabled || !sprite.gameObject.activeInHierarchy) return false;
+            Bounds bounds = sprite.bounds;
+            return point.x >= bounds.min.x && point.x <= bounds.max.x && point.y >= bounds.min.y && point.y <= bounds.max.y;
+        }
+
         /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
         /// <param name="waiting">Guests to show waiting; null shows the Core's count.</param>
         public void Refresh(ResortGame game, int? seated = null, int? waiting = null)
