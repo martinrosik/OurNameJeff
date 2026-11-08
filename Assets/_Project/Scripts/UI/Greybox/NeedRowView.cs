@@ -12,7 +12,7 @@ namespace ResortEmpire.UI
     /// </summary>
     internal sealed class NeedRowView
     {
-        private static readonly Color RowColor = Color.white.WithAlpha(0.85f);
+        private static readonly Color RowColor = UIFactory.RowBackground;
         private static readonly Color StaffedColor = UIFactory.Ink.WithAlpha(0.75f);
         private static readonly Color BottleneckRowColor = GreyboxPalette.Warning.Lighten(0.75f);
         private static readonly Color RecoveringRowColor = GreyboxPalette.WorkerOn.Lighten(0.75f);

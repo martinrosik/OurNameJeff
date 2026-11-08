@@ -66,9 +66,17 @@ namespace ResortEmpire.UI
         /// <summary>A panel that fills <see cref="GreyboxUI.SideArea"/>, so every side panel looks the same.</summary>
         public static Image SidePanel(string name, Transform sideArea)
         {
-            Image panel = Panel(name, sideArea, GreyboxPalette.PanelBlue.WithAlpha(0.96f));
+            Image panel = Panel(name, sideArea, PanelBackground);
             panel.rectTransform.Fill();
             return panel;
+        }
+
+        /// <summary>A dim layer over the whole parent. It also stops taps from reaching what is behind it.</summary>
+        public static Image Backdrop(string name, Transform parent)
+        {
+            Image backdrop = Panel(name, parent, Color.black.WithAlpha(0.35f), rounded: false);
+            backdrop.rectTransform.Fill();
+            return backdrop;
         }
 
         public static TextMeshProUGUI Text(
@@ -139,5 +147,7 @@ namespace ResortEmpire.UI
 
         public static readonly Color Ink = GreyboxPalette.Ink;
         public static readonly Color Paper = GreyboxPalette.Paper;
+        public static readonly Color PanelBackground = GreyboxPalette.PanelBlue.WithAlpha(0.96f);
+        public static readonly Color RowBackground = Color.white.WithAlpha(0.85f);
     }
 }

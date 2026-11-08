@@ -43,6 +43,16 @@ namespace ResortEmpire.Tests
             }
         }
 
+        private ResortGame GameAfterFirstWave()
+        {
+            ResortGame game = StartedGame();
+            game.Tick(90);
+            ServeEveryone(game);
+            game.Tick(0.5);
+            Assert.IsTrue(game.FinishResolving());
+            return game;
+        }
+
         [Test]
         public void FinishServiceFreesTheSeatForTheFirstInLine()
         {
@@ -155,6 +165,49 @@ namespace ResortEmpire.Tests
 
             game.Tick(0.1);
             Assert.AreEqual(GamePhase.WaveResolving, game.Phase);
+        }
+
+        [Test]
+        public void OUR40_ContinueReturnsToTheIslandAndTheNextWaveCanStart()
+        {
+            ResortGame game = GameAfterFirstWave();
+
+            Assert.IsTrue(game.ContinueAfterWave());
+
+            Assert.AreEqual(GamePhase.AwaitingWave, game.Phase);
+            Assert.AreEqual(1, game.CompletedWaves, "Continue does not count the wave a second time.");
+            Assert.AreEqual(2, game.GetNextWaveForecast().WaveNumber);
+
+            Assert.IsTrue(game.StartWave());
+            Assert.AreEqual(2, game.CurrentWave.WaveNumber);
+        }
+
+        [Test]
+        public void OUR40_ContinueOnlyWorksOnWaveComplete()
+        {
+            var game = new ResortGame(_config);
+            Assert.IsFalse(game.ContinueAfterWave(), "Before the first wave.");
+            Assert.AreEqual(GamePhase.AwaitingWave, game.Phase);
+
+            game.StartWave();
+            Assert.IsFalse(game.ContinueAfterWave(), "During the wave.");
+            Assert.AreEqual(GamePhase.WaveActive, game.Phase);
+
+            game.Tick(90);
+            ServeEveryone(game);
+            game.Tick(0.5);
+            Assert.IsFalse(game.ContinueAfterWave(), "While the guests are leaving.");
+            Assert.AreEqual(GamePhase.WaveResolving, game.Phase);
+        }
+
+        [Test]
+        public void OUR40_ContinueWorksOnlyOncePerWave()
+        {
+            ResortGame game = GameAfterFirstWave();
+
+            Assert.IsTrue(game.ContinueAfterWave());
+            Assert.IsFalse(game.ContinueAfterWave());
+            Assert.AreEqual(GamePhase.AwaitingWave, game.Phase);
         }
     }
 }

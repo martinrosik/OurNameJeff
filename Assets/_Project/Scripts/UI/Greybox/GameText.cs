@@ -33,7 +33,7 @@ namespace ResortEmpire.UI
                 case GamePhase.WaveActive: return $"WAVE {wave} IN PROGRESS";
                 case GamePhase.WavePaused: return "PAUSED";
                 case GamePhase.WaveResolving: return $"WAVE {wave}: GUESTS LEAVING";
-                case GamePhase.WaveComplete: return $"WAVE {game.LastWaveResult?.WaveNumber ?? wave} COMPLETE";
+                case GamePhase.WaveComplete: return WaveCompleteTitle(game.LastWaveResult?.WaveNumber ?? wave);
                 case GamePhase.Upgrade: return "BETWEEN WAVES";
                 default: return string.Empty;
             }
@@ -76,5 +76,16 @@ namespace ResortEmpire.UI
             bool isFull = building.HasWorker && status.Seated >= building.Seats;
             return isFull ? $"Full: {status.Seated}/{building.Seats} seats, {waiting}" : waiting;
         }
+
+        // OUR-40: Wave Complete.
+        public const string GuestsServedLabel = "Guests served";
+        public const string ContinueLabel = "CONTINUE";
+
+        public static string WaveCompleteTitle(int waveNumber) => $"WAVE {waveNumber} COMPLETE";
+
+        public static string WaveCompleteMessage(WaveResult result) => $"Wave {result.WaveNumber} has ended. Well done!";
+
+        /// <summary>Everyone is always served (WR4), so both numbers are the wave's guests.</summary>
+        public static string GuestsServed(WaveResult result) => $"{result.Guests}/{result.Guests}";
     }
 }
