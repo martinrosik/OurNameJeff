@@ -1,8 +1,7 @@
 namespace ResortEmpire.Core
 {
     /// <summary>
-    /// A building's live state: owned, level, Worker, Energy boost. Read it from UI;
-    /// change it only through <see cref="ResortGame"/>.
+    /// A building's live state. Read it from views; change it only through <see cref="ResortGame"/>.
     /// </summary>
     public sealed class BuildingRuntime
     {
@@ -10,26 +9,23 @@ namespace ResortEmpire.Core
         {
             Definition = definition;
             Level = 1;
+            HasWorker = definition.staffedAtStart;
         }
 
         public BuildingDefinition Definition { get; }
         public BuildingId Id => Definition.building;
         public NeedId Need => Definition.need;
 
-        public bool IsUnlocked { get; internal set; }
-
-        /// <summary>1-based level.</summary>
+        /// <summary>1-based level. Upgrades (later sprint) raise it.</summary>
         public int Level { get; internal set; }
 
+        /// <summary>
+        /// Whether a Worker stands here (OUR-48 shows it). Set from the config at the start; moving Workers is
+        /// OUR-45.
+        /// </summary>
         public bool HasWorker { get; internal set; }
 
-        /// <summary>Seconds of wave time left on the Energy boost; 0 when not boosted.</summary>
-        public double BoostRemaining { get; internal set; }
-
-        public int BoostsUsedThisWave { get; internal set; }
-
-        public bool IsBoosted => BoostRemaining > 0;
+        /// <summary>Capacity: guests served at the same time (OUR-50 shows it as seat squares).</summary>
         public int Seats => Definition.GetLevel(Level).seats;
-        public bool IsMaxLevel => Level >= Definition.MaxLevel;
     }
 }
