@@ -271,6 +271,18 @@ namespace ResortEmpire.Core
             return true;
         }
 
+        /// <summary>
+        /// OUR-40: the player pressed Continue on Wave Complete. WAVE_COMPLETE → AWAITING_WAVE, with the next wave's
+        /// forecast. UPGRADE goes in between once upgrades exist (later sprint).
+        /// </summary>
+        public bool ContinueAfterWave()
+        {
+            if (Phase != GamePhase.WaveComplete) return false;
+
+            SetPhase(GamePhase.AwaitingWave);
+            return true;
+        }
+
         /// <summary>OUR-46 / OUR-47: progress per second of a seated unit of <paramref name="need"/>.</summary>
         private double GetServiceSpeed(NeedId need)
         {

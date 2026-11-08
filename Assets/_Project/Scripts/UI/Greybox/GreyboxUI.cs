@@ -13,7 +13,7 @@ namespace ResortEmpire.UI
     /// OUR-45: tapping a building opens the Worker allocation sheet (<see cref="WorkerAllocationView"/>).
     /// OUR-37: the Wave Needs Panel (<see cref="NeedsPanelView"/>) uses the side area to the right during the wave.
     /// OUR-38 / OUR-39: building state changes show a short message over the island (<see cref="StateToastView"/>).
-    /// The wave-end info (OUR-40) plugs in here later.
+    /// OUR-40: <see cref="WaveCompleteView"/> tells the player the wave is over.
     /// UI reads game state and sends player intents; it never changes rules.
     /// </summary>
     public sealed class GreyboxUI : MonoBehaviour
@@ -30,12 +30,14 @@ namespace ResortEmpire.UI
         private NeedsPanelView _needs;
         private WorkerAllocationView _workers;
         private StateToastView _stateToast;
+        private WaveCompleteView _waveComplete;
         private IslandView _island;
 
         internal HudView Hud => _hud;
         internal NeedsPanelView Needs => _needs;
         internal WorkerAllocationView Workers => _workers;
         internal StateToastView StateToast => _stateToast;
+        internal WaveCompleteView WaveComplete => _waveComplete;
         internal ResortGame Game => _game;
 
         /// <summary>The area right of the island, below the top bar (forecast now; needs panel OUR-37 during the wave).</summary>
@@ -88,6 +90,7 @@ namespace ResortEmpire.UI
             _needs.Refresh(_game);
             _stateToast.Refresh(_game);
             _workers.Refresh(_game);
+            _waveComplete.Refresh(_game);
         }
 
         /// <summary>OUR-45: opens the Worker allocation sheet for a building (a tap on the island).</summary>
@@ -95,6 +98,9 @@ namespace ResortEmpire.UI
 
         /// <summary>OUR-27: Welcome Guests pressed.</summary>
         internal void StartWave() => _game.StartWave();
+
+        /// <summary>OUR-40: Continue pressed on Wave Complete.</summary>
+        internal void ContinueAfterWave() => _game.ContinueAfterWave();
 
         private void OnGameCreated(ResortGame game)
         {
@@ -136,6 +142,7 @@ namespace ResortEmpire.UI
             _needs = new NeedsPanelView(this, SideArea);
             _stateToast = new StateToastView(IslandArea); // OUR-38 / OUR-39
             _workers = new WorkerAllocationView(this, safe); // last, so it draws over the HUD
+            _waveComplete = new WaveCompleteView(this, canvasObject.transform); // on the canvas, so the dim also covers the notch area
         }
     }
 }

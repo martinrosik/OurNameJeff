@@ -38,8 +38,7 @@ namespace ResortEmpire.UI
         {
             _owner = owner;
 
-            Image backdrop = UIFactory.Panel("WorkerAllocation", root, Color.black.WithAlpha(0.35f), rounded: false);
-            backdrop.rectTransform.Fill();
+            Image backdrop = UIFactory.Backdrop("WorkerAllocation", root);
             var backdropButton = backdrop.gameObject.AddComponent<Button>();
             backdropButton.transition = Selectable.Transition.None;
             backdropButton.onClick.AddListener(Close);

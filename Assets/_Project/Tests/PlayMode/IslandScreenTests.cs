@@ -529,5 +529,77 @@ namespace ResortEmpire.Tests
             Assert.Greater(lastBoarded, allServed, "Guests still walk back to the boat after the last service.");
             Assert.Less(lastBoarded, allServed + 30, "The walk back takes seconds, not minutes.");
         }
+
+        /// <summary>Plays the wave that was just started until every guest is back on the boat.</summary>
+        private IEnumerator FinishStartedWave()
+        {
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer + 120); // wave 2's Food queue on the empty Restaurant needs about 65 s after the arrivals
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "Everyone is served.");
+
+            _island.Guests.FastForward(300f);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveComplete, Game.Phase, "Every guest is back on the boat.");
+        }
+
+        [UnityTest]
+        public IEnumerator OUR40_TheOverlayAppearsOnlyOnceTheWaveIsComplete()
+        {
+            yield return null;
+            Assert.IsFalse(_ui.WaveComplete.IsVisible, "Not before the wave.");
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 1);
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveActive, Game.Phase);
+            Assert.IsFalse(_ui.WaveComplete.IsVisible, "Never as a pop-up during the wave.");
+
+            yield return FinishStartedWave();
+
+            Assert.IsTrue(_ui.WaveComplete.IsVisible);
+            Assert.AreEqual("WAVE 1 COMPLETE", _ui.WaveComplete.TitleText);
+            Assert.AreEqual("Wave 1 has ended. Well done!", _ui.WaveComplete.MessageText);
+            Assert.AreEqual("12/12", _ui.WaveComplete.GuestsServedText);
+            Assert.IsFalse(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Continue is the only main button.");
+        }
+
+        [UnityTest]
+        public IEnumerator OUR40_ContinueReturnsToTheIslandWithTheNextForecast()
+        {
+            Game.StartWave();
+            yield return FinishStartedWave();
+
+            _ui.WaveComplete.ContinueButton.onClick.Invoke();
+            yield return null;
+
+            Assert.AreEqual(GamePhase.AwaitingWave, Game.Phase);
+            Assert.IsFalse(_ui.WaveComplete.IsVisible);
+            Assert.AreEqual("READY FOR GUESTS", _ui.Hud.StatusText);
+            Assert.IsTrue(_ui.Hud.ForecastVisible);
+            Assert.AreEqual(2, Game.GetNextWaveForecast().WaveNumber);
+            Assert.IsTrue(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Welcome Guests is back.");
+            StringAssert.Contains("Wave 2", _ui.Hud.StartWaveButton.GetComponentInChildren<TMPro.TMP_Text>().text);
+        }
+
+        [UnityTest]
+        public IEnumerator OUR40_TheNextWaveEndsWithItsOwnNumber()
+        {
+            Game.StartWave();
+            yield return FinishStartedWave();
+            _ui.WaveComplete.ContinueButton.onClick.Invoke();
+            yield return null;
+
+            _ui.Hud.StartWaveButton.onClick.Invoke();
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveIncoming, Game.Phase);
+            Assert.AreEqual(2, Game.CurrentWave.WaveNumber);
+
+            yield return FinishStartedWave();
+
+            Assert.IsTrue(_ui.WaveComplete.IsVisible);
+            Assert.AreEqual("WAVE 2 COMPLETE", _ui.WaveComplete.TitleText);
+            Assert.AreEqual("18/18", _ui.WaveComplete.GuestsServedText);
+        }
     }
 }

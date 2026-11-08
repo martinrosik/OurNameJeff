@@ -10,8 +10,8 @@ namespace ResortEmpire.Core
     /// The resting state between waves is <see cref="AwaitingWave"/>. Never call it anything else.
     /// <para>
     /// The whole state machine is listed as the shared contract. Implemented today: AwaitingWave → WaveIncoming →
-    /// WaveActive (OUR-27) → WaveResolving → WaveComplete (OUR-35). The others are reached once their tickets
-    /// exist (see docs/tasks).
+    /// WaveActive (OUR-27) → WaveResolving → WaveComplete (OUR-35) → AwaitingWave (OUR-40, skips Upgrade for now).
+    /// The others are reached once their tickets exist (see docs/tasks).
     /// </para>
     /// </summary>
     public enum GamePhase
@@ -34,7 +34,7 @@ namespace ResortEmpire.Core
         /// </summary>
         WaveResolving = 4,
 
-        /// <summary>The wave is over and counted (OUR-35). Telling the player and Continue is OUR-40.</summary>
+        /// <summary>The wave is over and counted (OUR-35). Ends with <see cref="ResortGame.ContinueAfterWave"/> (OUR-40).</summary>
         WaveComplete = 5,
 
         /// <summary>Upgrade suggestion (S5) and area unlocks (S9) after a wave. Not implemented yet (later sprint).</summary>

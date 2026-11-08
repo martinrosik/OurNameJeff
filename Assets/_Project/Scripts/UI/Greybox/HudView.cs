@@ -59,7 +59,7 @@ namespace ResortEmpire.UI
 
             for (int i = 0; i < ForecastRows; i++)
             {
-                Image row = UIFactory.Panel($"ForecastRow{i}", panel.transform, Color.white.WithAlpha(0.85f));
+                Image row = UIFactory.Panel($"ForecastRow{i}", panel.transform, UIFactory.RowBackground);
                 row.rectTransform.At(new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(10f, -60f - i * 30f), new Vector2(280f, 26f));
                 TextMeshProUGUI need = UIFactory.Text("Need", row.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
                 need.rectTransform.Fill(8, 120, 0, 0);
