@@ -5,6 +5,8 @@
     "ResortEmpire.Core",
     "ResortEmpire.Game",
     "ResortEmpire.UI",
+    "UnityEngine.UI",
+    "Unity.TextMeshPro",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
