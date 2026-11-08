@@ -16,7 +16,7 @@ namespace ResortEmpire.Editor
     public static class ModelSpriteRenderer
     {
         public static readonly Vector3 CameraEuler = new Vector3(30f, 45f, 0f);
-        private const string ShaderName = "Hidden/ResortEmpire/ModelSpriteBake";
+        internal const string ShaderName = "Hidden/ResortEmpire/ModelSpriteBake";
         private const int Padding = 4;
 
         [MenuItem("Resort Empire/Art/Render Selected Models To PNG", priority = 400)]
@@ -98,15 +98,7 @@ namespace ResortEmpire.Editor
                 target = RenderTexture.GetTemporary(pixels, pixels, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
                 camera.targetTexture = target;
 
-                var request = new RenderPipeline.StandardRequest { destination = target };
-                if (RenderPipeline.SupportsRenderRequest(camera, request))
-                {
-                    RenderPipeline.SubmitRenderRequest(camera, request);
-                }
-                else
-                {
-                    camera.Render();
-                }
+                Submit(camera, target);
 
                 Color32[] full = ReadBack(target, pixels);
                 Color32[] small = Downsample(full, pixels, supersample);
@@ -120,6 +112,21 @@ namespace ResortEmpire.Editor
                 if (target != null) RenderTexture.ReleaseTemporary(target);
                 foreach (Material material in materials) Object.DestroyImmediate(material);
                 EditorSceneManager.ClosePreviewScene(scene);
+            }
+        }
+
+        /// <summary>Renders <paramref name="camera"/> into <paramref name="target"/> through the active pipeline.</summary>
+        internal static void Submit(Camera camera, RenderTexture target)
+        {
+            camera.targetTexture = target;
+            var request = new RenderPipeline.StandardRequest { destination = target };
+            if (RenderPipeline.SupportsRenderRequest(camera, request))
+            {
+                RenderPipeline.SubmitRenderRequest(camera, request);
+            }
+            else
+            {
+                camera.Render();
             }
         }
 
@@ -149,7 +156,7 @@ namespace ResortEmpire.Editor
             camera.farClipPlane = distance * 2f + bounds.extents.magnitude * 2f;
         }
 
-        private static Color32[] ReadBack(RenderTexture target, int pixels)
+        internal static Color32[] ReadBack(RenderTexture target, int pixels)
         {
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = target;
@@ -163,7 +170,7 @@ namespace ResortEmpire.Editor
         }
 
         /// <summary>Box filter with alpha weighting, so edges don't pick up the black background.</summary>
-        private static Color32[] Downsample(Color32[] source, int sourceSize, int factor)
+        internal static Color32[] Downsample(Color32[] source, int sourceSize, int factor)
         {
             int size = sourceSize / factor;
             var result = new Color32[size * size];

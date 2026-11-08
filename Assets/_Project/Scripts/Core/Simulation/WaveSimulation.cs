@@ -33,6 +33,7 @@ namespace ResortEmpire.Core
             if (waveTimer <= 0) throw new ArgumentOutOfRangeException(nameof(waveTimer), "The arrival phase must be longer than 0 s.");
 
             WaveIndex = forecast.WaveIndex;
+            GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
             foreach (NeedDemand demand in forecast.Demand)
             {
@@ -44,6 +45,9 @@ namespace ResortEmpire.Core
 
         public int WaveIndex { get; }
         public int WaveNumber => WaveIndex + 1;
+
+        /// <summary>Guests shown arriving (visual; each carries about 2 of the need units). See <see cref="GuestPlan"/>.</summary>
+        public int GuestCount { get; }
 
         /// <summary>Length of the arrival phase (90 s by default).</summary>
         public double WaveTimer { get; }
@@ -80,6 +84,9 @@ namespace ResortEmpire.Core
 
         /// <summary>Arrival time of unit <paramref name="index"/> (0-based) of a need.</summary>
         public double GetArrivalTime(NeedId need, int index) => Get(need).ArrivalTimes[index];
+
+        /// <summary>Units of a need in this wave (0 for a need that isn't in it).</summary>
+        public int GetTotal(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.Total : 0;
 
         /// <summary>Live numbers of one need. All zero for a need that isn't in this wave.</summary>
         public NeedStatus GetNeedStatus(NeedId need)
@@ -190,7 +197,11 @@ namespace ResortEmpire.Core
         /// <summary>Units sitting in the building's seats.</summary>
         public int Seated { get; }
 
-        /// <summary>Units fully served. Stays 0 until service exists (OUR-46).</summary>
+        /// <summary>
+        /// Units fully served. Stays 0 until service exists (OUR-46). Serve each need's units in arrival order
+        /// (first come, first served): the walking guests (GuestCrowdView) move on to their next building once
+        /// <c>Served</c> has passed their unit.
+        /// </summary>
         public int Served { get; }
     }
 }

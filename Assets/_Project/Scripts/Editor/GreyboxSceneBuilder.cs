@@ -14,7 +14,7 @@ namespace ResortEmpire.Editor
     /// <summary>
     /// Lays out the greybox in Game.unity (OUR-31): Game (controller), Island (sand, grass, palms, rocks, bushes,
     /// dock, guest boat and the buildings from the config, with placeholder Kenney art and their Worker and
-    /// capacity indicators) and UI. Re-running it replaces those three roots, so local tweaks to them are lost.
+    /// capacity indicators, and the walking guests) and UI. Re-running it replaces those three roots, so local tweaks to them are lost.
     /// Move things by hand afterwards if you like; the code doesn't depend on positions.
     /// </summary>
     public static class GreyboxSceneBuilder
@@ -37,6 +37,7 @@ namespace ResortEmpire.Editor
         private const int DecorOrder = 2;
         private const int PlateOrder = 5;
         private const int ArtOrder = 6;
+        private const int GuestOrder = 7;
         private const int BadgeOrder = 8;
         private const int LabelBackingOrder = 9;
 
@@ -125,6 +126,96 @@ namespace ResortEmpire.Editor
             SetVector3(boat, "dockPosition", IslandCentre + new Vector3(1.5f, -3.85f, 0f));
             SetVector3(boat, "seaPosition", IslandCentre + new Vector3(5.2f, -6.4f, 0f));
             SetReference(island, "boat", boat);
+
+            BuildGuests(root.transform, island);
+        }
+
+        /// <summary>Animated guests walking from the dock to the buildings (Kenney Mini Characters, see GuestSpriteBaker).</summary>
+        private static void BuildGuests(Transform parent, IslandView island)
+        {
+            var guestsObject = new GameObject("Guests");
+            guestsObject.transform.SetParent(parent, false);
+            var guests = guestsObject.AddComponent<GuestCrowdView>();
+
+            var so = new SerializedObject(guests);
+            so.FindProperty("dockPosition").vector3Value = IslandCentre + new Vector3(0.2f, -3.1f, 0f);
+            so.FindProperty("plazaPosition").vector3Value = IslandCentre + new Vector3(-0.4f, -0.6f, 0f);
+            so.FindProperty("sortingOrder").intValue = GuestOrder;
+
+            // Doors: under the seats, and beside the Beach Bar so guests stay off the dock.
+            var doors = new[]
+            {
+                (BuildingId.Reception, new Vector3(0f, -1.1f, 0f)),
+                (BuildingId.Restaurant, new Vector3(0.3f, -1.1f, 0f)),
+                (BuildingId.BeachBar, new Vector3(-1.35f, -0.45f, 0f)),
+            };
+            SerializedProperty doorsProperty = so.FindProperty("doorSetups");
+            doorsProperty.arraySize = doors.Length;
+            for (int i = 0; i < doors.Length; i++)
+            {
+                SerializedProperty door = doorsProperty.GetArrayElementAtIndex(i);
+                door.FindPropertyRelative("building").enumValueIndex = (int)doors[i].Item1;
+                door.FindPropertyRelative("door").vector3Value = doors[i].Item2;
+            }
+
+            List<GuestLook> looks = LoadGuestLooks();
+            SerializedProperty looksProperty = so.FindProperty("looks");
+            looksProperty.arraySize = looks.Count;
+            for (int i = 0; i < looks.Count; i++)
+            {
+                SerializedProperty look = looksProperty.GetArrayElementAtIndex(i);
+                look.FindPropertyRelative("name").stringValue = looks[i].name;
+                SetSprites(look.FindPropertyRelative("walkFront"), looks[i].walkFront);
+                SetSprites(look.FindPropertyRelative("walkBack"), looks[i].walkBack);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            SetReference(island, "guests", guests);
+
+            if (looks.Count == 0)
+            {
+                Debug.LogWarning($"No guest sprites in {GuestSpriteBaker.OutputFolder}. Run Resort Empire/Art/Bake Guest Characters.");
+            }
+        }
+
+        /// <summary>Every Guest_*_Walk.png sheet, split into its Front and Back walk frames in order.</summary>
+        private static List<GuestLook> LoadGuestLooks()
+        {
+            var looks = new List<GuestLook>();
+            foreach (string guid in AssetDatabase.FindAssets("Guest_ t:Texture2D", new[] { GuestSpriteBaker.OutputFolder }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var front = new SortedDictionary<int, Sprite>();
+                var back = new SortedDictionary<int, Sprite>();
+                foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                {
+                    if (!(asset is Sprite sprite)) continue;
+                    string[] parts = sprite.name.Split('_');
+                    if (parts.Length < 2 || !int.TryParse(parts[parts.Length - 1], out int frame)) continue;
+                    string row = parts[parts.Length - 2];
+                    if (row == "Front") front[frame] = sprite;
+                    else if (row == "Back") back[frame] = sprite;
+                }
+
+                if (front.Count == 0 || back.Count == 0) continue;
+                looks.Add(new GuestLook
+                {
+                    name = System.IO.Path.GetFileNameWithoutExtension(path),
+                    walkFront = new List<Sprite>(front.Values).ToArray(),
+                    walkBack = new List<Sprite>(back.Values).ToArray(),
+                });
+            }
+
+            return looks;
+        }
+
+        private static void SetSprites(SerializedProperty array, Sprite[] sprites)
+        {
+            array.arraySize = sprites.Length;
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                array.GetArrayElementAtIndex(i).objectReferenceValue = sprites[i];
+            }
         }
 
         private static void BuildBuilding(Transform parent, BuildingDefinition definition)

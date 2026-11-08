@@ -69,7 +69,9 @@ now: guests, service, the needs panel, moving Workers and the wave end are other
 guide in [docs/tasks/](docs/tasks/README.md).
 
 Placeholder art comes from [Kenney](https://kenney.nl) (CC0, public domain): *City Kit (Suburban)* for the
-houses and *Pirate Kit* for palms, rocks, the dock and the ship. The 3D models were rendered to PNGs with
+houses, *Pirate Kit* for palms, rocks, the dock and the ship, and *Mini Characters* for the guests who walk
+from the dock to their building (13 ordinary people, walk cycle baked into `Art/Guests` with
+**Resort Empire → Art → Bake Guest Characters**, `GuestSpriteBaker`). The 3D models were rendered to PNGs with
 **Resort Empire → Art → Render Selected Models To PNG** (`ModelSpriteRenderer`); only the PNGs and the license are
 in `Assets/_Project/Art/Kenney`. All of it gets replaced in the art pass.
 If you change the island layout code, **Resort Empire → Greybox → Rebuild Greybox Scene** regenerates the

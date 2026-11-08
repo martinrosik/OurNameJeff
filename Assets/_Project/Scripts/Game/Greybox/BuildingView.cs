@@ -9,7 +9,8 @@ namespace ResortEmpire.Game
     /// <summary>
     /// A building on the island (OUR-31) with its two indicators:
     /// <list type="bullet">
-    /// <item><b>OUR-50 capacity</b>: one seat square per seat (3 at level 1); a seat fills when a guest sits there.</item>
+    /// <item><b>OUR-50 capacity</b>: one seat square per seat (3 at level 1); a seat fills when a guest has walked
+    /// in (<see cref="GuestCrowdView"/>).</item>
     /// <item><b>OUR-48 Worker</b>: a green "W" badge when a Worker stands here, a grey badge and "No Worker" when not.
     /// The empty building must look unstaffed at a glance (Build doc §4.5).</item>
     /// <item><b>OUR-34 queue</b>: one small dot per guest waiting for a seat, 2 rows of 6, then "+N".</item>
@@ -58,6 +59,9 @@ namespace ResortEmpire.Game
         /// <summary>Seat squares currently shown (OUR-50).</summary>
         public int ShownSeats { get; private set; }
 
+        /// <summary>Seat squares shown as taken (OUR-50).</summary>
+        public int ShownSeated { get; private set; }
+
         /// <summary>Guests shown waiting in front of the building (OUR-34).</summary>
         public int ShownWaiting { get; private set; }
 
@@ -66,7 +70,9 @@ namespace ResortEmpire.Game
 
         public string StatusText => statusLabel != null ? statusLabel.text : string.Empty;
 
-        public void Refresh(ResortGame game)
+        /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
+        /// <param name="waiting">Guests to show waiting; null shows the Core's count.</param>
+        public void Refresh(ResortGame game, int? seated = null, int? waiting = null)
         {
             BuildingRuntime runtime = game.GetBuilding(building);
             if (runtime == null)
@@ -78,8 +84,8 @@ namespace ResortEmpire.Game
             body.color = GreyboxPalette.ForBuilding(building);
             nameLabel.text = runtime.Definition.displayName;
 
-            ShowSeats(runtime.Seats, game.GetSeatedCount(building));
-            ShowQueue(game.GetNeedStatus(runtime.Need).Waiting);
+            ShowSeats(runtime.Seats, seated ?? game.GetSeatedCount(building));
+            ShowQueue(waiting ?? game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
         }
 
@@ -160,6 +166,7 @@ namespace ResortEmpire.Game
         private void ShowSeats(int seats, int seated)
         {
             ShownSeats = seats;
+            ShownSeated = Mathf.Min(seated, seats);
             while (_seats.Count < seats)
             {
                 var go = new GameObject("Seat");

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using ResortEmpire.Core;
 using ResortEmpire.Game;
@@ -103,16 +104,86 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
-        public IEnumerator OUR34_ArrivingGuestsFillSeatsThenQueueInFrontOfTheBuilding()
+        public IEnumerator GuestsWalkFromTheDockToTheirBuilding()
         {
+            GuestCrowdView guests = _island.Guests;
+            Assert.IsNotNull(guests, "The island has no walking guests.");
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 12);
+            yield return null;
+
+            Assert.AreEqual(1, guests.SpawnedCount, "Guest 1 (Rooms + Drinks) steps off at 11.25 s.");
+            Assert.AreEqual(1, guests.WalkingCount);
+
+            SpriteRenderer walker = guests.GetComponentInChildren<SpriteRenderer>();
+            Assert.IsNotNull(walker.sprite, "Guests are drawn with the baked walk frames.");
+            Vector3 start = walker.transform.position;
+            for (int i = 0; i < 20; i++) yield return null;
+            Assert.AreNotEqual(start, walker.transform.position, "Guests walk.");
+        }
+
+        [UnityTest]
+        public IEnumerator ASeatFillsOnlyWhenTheGuestGetsThere()
+        {
+            GuestCrowdView guests = _island.Guests;
+            BuildingView reception = _island.GetView(BuildingId.Reception);
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 12);
+            yield return null;
+
+            Assert.AreEqual(1, Game.GetSeatedCount(BuildingId.Reception), "The Core seats the unit on arrival.");
+            Assert.AreEqual(0, reception.ShownSeated, "The seat stays free while the guest is still walking.");
+
+            guests.FastForward(15f);
+            yield return null;
+
+            Assert.AreEqual(1, reception.ShownSeated, "The seat fills when the guest walks in.");
+        }
+
+        [UnityTest]
+        public IEnumerator AGuestStaysInItsFirstBuildingUntilItIsServed()
+        {
+            GuestCrowdView guests = _island.Guests;
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 12);
+            yield return null;
+            guests.FastForward(20f);
+            yield return null;
+
+            Assert.AreEqual(2, guests.Plan.Guests[0].Count, "Guest 1 needs Rooms and Drinks.");
+            Assert.AreEqual(1, guests.GetDeliveredCount(NeedId.Rooms), "It went into the Reception ...");
+            Assert.AreEqual(0, guests.GetDeliveredCount(NeedId.Drinks), "... and waits there: nobody is served before OUR-46.");
+            Assert.AreEqual(1, guests.InsideCount);
+            Assert.AreEqual(0, guests.WalkingCount);
+        }
+
+        [UnityTest]
+        public IEnumerator EveryGuestGoesToItsFirstBuildingAndWaitsToBeServed()
+        {
+            GuestCrowdView guests = _island.Guests;
+
             Game.StartWave();
             Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer);
             yield return null;
+            guests.FastForward(60f);
+            yield return null;
 
-            BuildingView reception = _island.GetView(BuildingId.Reception);
-            Assert.AreEqual(3, Game.GetSeatedCount(BuildingId.Reception));
-            Assert.AreEqual(5, reception.ShownWaiting, "Rooms 8: 3 seated, 5 waiting.");
-            Assert.AreEqual(3, _island.GetView(BuildingId.Restaurant).ShownWaiting, "Food 6: 3 seated, 3 waiting.");
+            Assert.AreEqual(guests.Plan.Guests.Count, guests.SpawnedCount, "Every guest stepped off the boat.");
+            Assert.AreEqual(0, guests.WalkingCount, "Every guest is inside its first building.");
+
+            foreach (BuildingId id in new[] { BuildingId.Reception, BuildingId.Restaurant, BuildingId.BeachBar })
+            {
+                NeedId need = Game.GetBuilding(id).Need;
+                int firstVisits = guests.Plan.Guests.Count(g => g.Visits[0].Need == need);
+                BuildingView view = _island.GetView(id);
+
+                Assert.AreEqual(firstVisits, guests.GetDeliveredCount(need), $"{id}: guests whose first need is {need}.");
+                Assert.AreEqual(Mathf.Min(3, firstVisits), view.ShownSeated, $"{id}: seats taken by those guests.");
+                Assert.AreEqual(Mathf.Max(0, firstVisits - 3), view.ShownWaiting, $"{id}: the rest as queue squares.");
+            }
         }
     }
 }
