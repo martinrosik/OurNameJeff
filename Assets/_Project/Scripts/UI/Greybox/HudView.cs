@@ -49,8 +49,7 @@ namespace ResortEmpire.UI
             _status = UIFactory.Text("Label", pill.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
             _status.rectTransform.Fill(20, 8, 0, 0);
 
-            Image panel = UIFactory.Panel("ForecastPanel", sideArea, GreyboxPalette.PanelBlue.WithAlpha(0.96f));
-            panel.rectTransform.Fill();
+            Image panel = UIFactory.SidePanel("ForecastPanel", sideArea);
             _forecastPanel = panel.gameObject;
 
             _title = UIFactory.Text("Title", panel.transform, string.Empty, 17, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);

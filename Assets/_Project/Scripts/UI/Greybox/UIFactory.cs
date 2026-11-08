@@ -63,6 +63,14 @@ namespace ResortEmpire.UI
             return image;
         }
 
+        /// <summary>A panel that fills <see cref="GreyboxUI.SideArea"/>, so every side panel looks the same.</summary>
+        public static Image SidePanel(string name, Transform sideArea)
+        {
+            Image panel = Panel(name, sideArea, GreyboxPalette.PanelBlue.WithAlpha(0.96f));
+            panel.rectTransform.Fill();
+            return panel;
+        }
+
         public static TextMeshProUGUI Text(
             string name,
             Transform parent,
