@@ -56,7 +56,7 @@ namespace ResortEmpire.UI
             _subtitle.textWrappingMode = TextWrappingModes.Normal;
             _subtitle.rectTransform.At(new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -30f), new Vector2(SheetWidth - 24f, 26f));
 
-            Button close = UIFactory.Button("CloseButton", _sheet, "CLOSE", Color.white, UIFactory.Ink, 11, Close);
+            Button close = UIFactory.Button("CloseButton", _sheet, GameText.CloseLabel, Color.white, UIFactory.Ink, 11, Close);
             ((RectTransform)close.transform).At(new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-8f, -8f), new Vector2(70f, 24f));
 
             _root.SetActive(false);
@@ -115,31 +115,29 @@ namespace ResortEmpire.UI
         private void Show(ResortGame game)
         {
             BuildingRuntime here = game.GetBuilding(Building);
-            string name = here.Definition.displayName;
-            _title.text = $"WORKER ALLOCATION · {name.ToUpperInvariant()}";
+            _title.text = GameText.WorkerSheetTitle(here.Definition.displayName);
 
             _optionTargets.Clear();
             var labels = new List<string>();
             foreach (BuildingRuntime other in game.Buildings)
             {
                 if (other.Id == Building) continue;
-                string otherName = other.Definition.displayName;
 
                 if (!here.HasWorker && other.HasWorker)
                 {
                     // Take the Worker from the other building: that one will be left empty.
                     _optionTargets.Add(other.Id);
-                    labels.Add($"TAKE FROM {otherName.ToUpperInvariant()}\n<size=75%>{Activity(game, other)} · {otherName} will be left without a Worker</size>");
+                    labels.Add(GameText.TakeWorkerOption(game, other));
                 }
                 else if (here.HasWorker && !other.HasWorker)
                 {
                     // Send this building's Worker over there: this one will be left empty.
                     _optionTargets.Add(other.Id);
-                    labels.Add($"MOVE TO {otherName.ToUpperInvariant()}\n<size=75%>{Activity(game, other)} · {name} will be left without a Worker</size>");
+                    labels.Add(GameText.MoveWorkerOption(game, here, other));
                 }
             }
 
-            _subtitle.text = Subtitle(game, here);
+            _subtitle.text = GameText.WorkerSheetSubtitle(game, here);
 
             while (_options.Count < labels.Count)
             {
@@ -176,47 +174,6 @@ namespace ResortEmpire.UI
             else game.MoveWorker(other, Building);
 
             Close();
-        }
-
-        private static string Subtitle(ResortGame game, BuildingRuntime building)
-        {
-            string activity = Activity(game, building);
-            if (!building.HasWorker)
-            {
-                return $"No Worker: serving slowly. {activity}. Take a Worker from another building:";
-            }
-
-            // Too small only while the queue still grows with a Worker (BOTTLENECK), not while it is catching up.
-            if (game.GetNeedState(building.Need) == NeedState.Bottleneck)
-            {
-                int waiting = game.GetNeedStatus(building.Need).Waiting;
-                return $"Has its Worker, but the queue is long ({waiting}): the building is too small. Upgrade it after the wave.";
-            }
-
-            return $"Has its Worker. {activity}. Send it to the building without one:";
-        }
-
-        /// <summary>What a building is doing: the next wave's demand before the wave, its guests during it.</summary>
-        private static string Activity(ResortGame game, BuildingRuntime building)
-        {
-            string need = GameText.Need(game, building.Need);
-            if (game.Phase == GamePhase.AwaitingWave)
-            {
-                WaveForecast forecast = game.GetNextWaveForecast();
-                int units = 0;
-                if (forecast != null)
-                {
-                    foreach (NeedDemand demand in forecast.Demand)
-                    {
-                        if (demand.Need == building.Need) units = demand.Units;
-                    }
-                }
-
-                return $"Next wave: {need} {units}";
-            }
-
-            NeedStatus status = game.GetNeedStatus(building.Need);
-            return $"{need}: {status.Served}/{status.Total} served, {status.Waiting} waiting";
         }
     }
 }

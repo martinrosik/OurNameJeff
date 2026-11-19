@@ -72,10 +72,10 @@ namespace ResortEmpire.UI
             _note.textWrappingMode = TextWrappingModes.Normal;
             _note.rectTransform.At(new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(12f, 12f), new Vector2(276f, 44f));
 
-            _startWave = UIFactory.Button("StartWaveButton", islandArea, "WELCOME GUESTS", GreyboxPalette.Primary, Color.white, 17, OnStartWave);
+            _startWave = UIFactory.Button("StartWaveButton", islandArea, GameText.WelcomeGuestsLabel, GreyboxPalette.Primary, Color.white, 17, OnStartWave);
             ((RectTransform)_startWave.transform).At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(240f, 46f));
 
-            _hint = UIFactory.Text("Hint", islandArea, "Check what the guests will need. Tap a building to move a Worker.", 11, Color.white, TextAlignmentOptions.Center);
+            _hint = UIFactory.Text("Hint", islandArea, GameText.HomeHint, 11, Color.white, TextAlignmentOptions.Center);
             _hint.rectTransform.At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 54f), new Vector2(420f, 16f));
         }
 
@@ -125,9 +125,9 @@ namespace ResortEmpire.UI
                 return;
             }
 
-            _startWave.SetLabel($"WELCOME GUESTS\n<size=65%>Wave {forecast.WaveNumber}</size>");
-            _title.text = $"NEXT: WAVE {forecast.WaveNumber}";
-            _subtitle.text = $"{forecast.Guests} guests are coming";
+            _startWave.SetLabel(GameText.WelcomeGuestsForWave(forecast));
+            _title.text = GameText.ForecastTitle(forecast);
+            _subtitle.text = GameText.ForecastGuests(forecast);
 
             int index = 0;
             foreach (NeedDemand demand in forecast.Demand)
@@ -140,15 +140,14 @@ namespace ResortEmpire.UI
 
                 (GameObject row, TextMeshProUGUI need, TextMeshProUGUI place) = _rows[index];
                 row.SetActive(true);
-                need.text = $"{GameText.Need(game, demand.Need)}  {demand.Units}";
-                place.text = staffed
-                    ? $"{definition.displayName}: Worker"
-                    : $"<color=#{ColorUtility.ToHtmlStringRGB(GreyboxPalette.Warning)}>{definition?.displayName}: No Worker</color>";
+                need.text = GameText.ForecastDemand(game, demand);
+                string staffing = GameText.ForecastStaffing(definition?.displayName, staffed);
+                place.text = staffed ? staffing : $"<color=#{ColorUtility.ToHtmlStringRGB(GreyboxPalette.Warning)}>{staffing}</color>";
                 index++;
             }
 
             HideRowsFrom(index);
-            _note.text = "Each number is how many guests will need that service. One building always stays without a Worker.";
+            _note.text = GameText.ForecastNote;
         }
 
         private void HideRowsFrom(int index)

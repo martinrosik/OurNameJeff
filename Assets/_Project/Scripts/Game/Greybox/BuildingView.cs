@@ -223,9 +223,9 @@ namespace ResortEmpire.Game
         {
             ShowsWorker = hasWorker;
             workerBadge.color = hasWorker ? GreyboxPalette.WorkerOn : GreyboxPalette.WorkerOff;
-            workerLabel.text = hasWorker ? "W" : "-";
+            workerLabel.text = hasWorker ? GameText.WorkerBadge : GameText.NoWorkerBadge;
 
-            statusLabel.text = hasWorker ? string.Empty : "No Worker";
+            statusLabel.text = hasWorker ? string.Empty : GameText.NoWorkerLabel;
             statusLabel.color = GreyboxPalette.Warning;
             if (statusBacking != null) statusBacking.enabled = !hasWorker;
         }

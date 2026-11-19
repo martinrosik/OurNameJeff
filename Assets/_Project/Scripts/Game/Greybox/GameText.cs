@@ -1,13 +1,14 @@
 using System;
 using ResortEmpire.Core;
 
-namespace ResortEmpire.UI
+namespace ResortEmpire.Game
 {
     /// <summary>
     /// In-game strings for the greybox (English, as the UI doc requires). Kept in one place so the
     /// Localization pass can replace them later. Add new screens' strings here.
+    /// It lives in the Game layer, next to <see cref="GreyboxPalette"/>, so the island's labels and the UI screens share it.
     /// </summary>
-    internal static class GameText
+    public static class GameText
     {
         public static string Need(ResortGame game, NeedId need) =>
             game.Config.GetNeed(need)?.displayName ?? need.ToString();
@@ -24,6 +25,11 @@ namespace ResortEmpire.UI
         /// <summary>OUR-39: "Beach Bar is catching up".</summary>
         public static string CatchingUp(ResortGame game, BuildingId building) => $"{Building(game, building)} is catching up";
 
+        // OUR-48: the Worker badge on the island, and the "No Worker" every screen shows.
+        public const string NoWorkerLabel = "No Worker";
+        public const string WorkerBadge = "W";
+        public const string NoWorkerBadge = "-";
+
         public static string Status(ResortGame game)
         {
             int wave = game.CurrentWaveIndex + 1;
@@ -39,6 +45,22 @@ namespace ResortEmpire.UI
                 default: return string.Empty;
             }
         }
+
+        // S1 Home: Welcome Guests (OUR-27) and the next-wave forecast (OUR-33).
+        public const string WelcomeGuestsLabel = "WELCOME GUESTS";
+        public const string HomeHint = "Check what the guests will need. Tap a building to move a Worker.";
+        public const string ForecastNote = "Each number is how many guests will need that service. One building always stays without a Worker.";
+
+        public static string WelcomeGuestsForWave(WaveForecast forecast) => $"{WelcomeGuestsLabel}\n<size=65%>Wave {forecast.WaveNumber}</size>";
+
+        public static string ForecastTitle(WaveForecast forecast) => $"NEXT: WAVE {forecast.WaveNumber}";
+
+        public static string ForecastGuests(WaveForecast forecast) => $"{forecast.Guests} guests are coming";
+
+        public static string ForecastDemand(ResortGame game, NeedDemand demand) => $"{Need(game, demand.Need)}  {demand.Units}";
+
+        /// <summary>"Restaurant: Worker" or "Restaurant: No Worker" beside a forecast row.</summary>
+        public static string ForecastStaffing(string buildingName, bool hasWorker) => $"{buildingName}: {(hasWorker ? "Worker" : NoWorkerLabel)}";
 
         // OUR-37: the Wave Needs Panel.
         public const string NeedsPanelHint = "Tap a need to move a Worker.";
@@ -68,7 +90,7 @@ namespace ResortEmpire.UI
         }
 
         public static string BuildingStaffing(BuildingRuntime building) =>
-            $"{building.Definition.displayName}: {(building.HasWorker ? "Worker" : "No Worker (slow)")}";
+            $"{building.Definition.displayName}: {(building.HasWorker ? "Worker" : $"{NoWorkerLabel} (slow)")}";
 
         /// <summary>"Full" appears only with a Worker: then a queue means the building is too small, not understaffed.</summary>
         public static string NeedQueue(NeedStatus status, BuildingRuntime building)
@@ -76,6 +98,58 @@ namespace ResortEmpire.UI
             string waiting = $"{status.Waiting} waiting";
             bool isFull = building.HasWorker && status.Seated >= building.Seats;
             return isFull ? $"Full: {status.Seated}/{building.Seats} seats, {waiting}" : waiting;
+        }
+
+        // OUR-45: the Worker Allocation sheet (S3).
+        public const string CloseLabel = "CLOSE";
+
+        public static string WorkerSheetTitle(string buildingName) => $"WORKER ALLOCATION · {buildingName.ToUpperInvariant()}";
+
+        /// <summary>"TAKE FROM BEACH BAR": what the other building is doing, and that it will be left without a Worker.</summary>
+        public static string TakeWorkerOption(ResortGame game, BuildingRuntime other)
+        {
+            string otherName = other.Definition.displayName;
+            return $"TAKE FROM {otherName.ToUpperInvariant()}\n<size=75%>{WorkerSheetActivity(game, other)} · {otherName} will be left without a Worker</size>";
+        }
+
+        /// <summary>"MOVE TO RESTAURANT": what the other building is doing, and that this one will be left without a Worker.</summary>
+        public static string MoveWorkerOption(ResortGame game, BuildingRuntime here, BuildingRuntime other)
+        {
+            string otherName = other.Definition.displayName;
+            return $"MOVE TO {otherName.ToUpperInvariant()}\n<size=75%>{WorkerSheetActivity(game, other)} · {here.Definition.displayName} will be left without a Worker</size>";
+        }
+
+        public static string WorkerSheetSubtitle(ResortGame game, BuildingRuntime building)
+        {
+            string activity = WorkerSheetActivity(game, building);
+            if (!building.HasWorker)
+            {
+                return $"{NoWorkerLabel}: serving slowly. {activity}. Take a Worker from another building:";
+            }
+
+            // Too small only while the queue still grows with a Worker (BOTTLENECK), not while it is catching up.
+            if (game.GetNeedState(building.Need) == NeedState.Bottleneck)
+            {
+                int waiting = game.GetNeedStatus(building.Need).Waiting;
+                return $"Has its Worker, but the queue is long ({waiting}): the building is too small. Upgrade it after the wave.";
+            }
+
+            return $"Has its Worker. {activity}. Send it to the building without one:";
+        }
+
+        /// <summary>What a building is doing: the next wave's demand before the wave, its guests during it.</summary>
+        public static string WorkerSheetActivity(ResortGame game, BuildingRuntime building)
+        {
+            string need = Need(game, building.Need);
+            if (game.Phase == GamePhase.AwaitingWave)
+            {
+                WaveForecast forecast = game.GetNextWaveForecast();
+                int units = forecast != null ? forecast.GetDemand(building.Need) : 0;
+                return $"Next wave: {need} {units}";
+            }
+
+            NeedStatus status = game.GetNeedStatus(building.Need);
+            return $"{need}: {status.Served}/{status.Total} served, {status.Waiting} waiting";
         }
 
         // OUR-40: Wave Complete.
