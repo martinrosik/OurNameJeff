@@ -105,12 +105,11 @@ namespace ResortEmpire.Game
         /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
         public void Refresh(ResortGame game, int? seated = null)
         {
+            // Hidden while its building isn't on the island, and shown again once it is (an unlock, or a new game).
             BuildingRuntime runtime = game.GetBuilding(building);
-            if (runtime == null)
-            {
-                gameObject.SetActive(false);
-                return;
-            }
+            bool isOnIsland = runtime != null;
+            if (gameObject.activeSelf != isOnIsland) gameObject.SetActive(isOnIsland);
+            if (!isOnIsland) return;
 
             body.color = GreyboxPalette.ForBuilding(building);
             nameLabel.text = runtime.Definition.displayName;

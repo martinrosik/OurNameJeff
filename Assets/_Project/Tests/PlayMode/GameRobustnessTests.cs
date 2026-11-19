@@ -95,5 +95,23 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(4, _island.Guests.GetDeliveredCount(NeedId.Relax), "The Pool's guests made their visits at the plaza.");
             Assert.IsTrue(_island.Guests.AllBoarded);
         }
+
+        [UnityTest]
+        public IEnumerator ABuildingViewComesBackOnceItsBuildingIsOnTheIslandAgain()
+        {
+            GameConfig shipped = Game.Config;
+            GameConfig withoutRestaurant = CopyOfShippedConfig();
+            withoutRestaurant.buildings.RemoveAll(b => b.building == BuildingId.Restaurant);
+            BuildingView restaurant = _island.GetView(BuildingId.Restaurant);
+
+            PlayWith(withoutRestaurant);
+            yield return null;
+            Assert.IsFalse(restaurant.gameObject.activeSelf, "Hidden while the Restaurant isn't on the island.");
+
+            PlayWith(shipped);
+            yield return null;
+            Assert.IsTrue(restaurant.gameObject.activeSelf, "Shown again once the Restaurant is back.");
+            Assert.AreEqual(3, restaurant.ShownSeats);
+        }
     }
 }
