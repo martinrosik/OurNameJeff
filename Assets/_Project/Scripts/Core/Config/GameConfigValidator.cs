@@ -27,6 +27,7 @@ namespace ResortEmpire.Core
                 if (config.wave.serviceTime <= 0f) errors.Add($"Service time must be above 0 s (is {config.wave.serviceTime}).");
                 if (config.wave.utilizationStaffed <= 0f) errors.Add($"utilizationStaffed must be above 0 (is {config.wave.utilizationStaffed}).");
                 if (config.wave.utilizationEmpty <= 0f) errors.Add($"WR2: utilizationEmpty must be above 0 (is {config.wave.utilizationEmpty}), or an empty building never finishes.");
+                if (config.wave.growthIfNotHarder < 0.01f) errors.Add($"growthIfNotHarder must be at least 0.01 (is {config.wave.growthIfNotHarder}), or a wave could be no harder than the one before it.");
             }
 
             ValidateSatisfaction(config.satisfaction, errors);

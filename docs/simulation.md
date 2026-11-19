@@ -11,6 +11,7 @@ the game and in EditMode tests. It follows the Build doc (§4.3–§4.10).
 | `ResortGame` | The game: phase state machine, buildings, Workers, forecast, wave start |
 | `BuildingRuntime` | One building's live state: level, Worker, seats (capacity) |
 | `WaveForecast` | Demand of a wave for the needs on the island (S1 forecast) |
+| `WaveProgression` | Wave difficulty: each wave's demand, always bigger than the wave before it (`growthIfNotHarder` when the table row isn't) |
 | `WaveSimulation` | One wave in progress: arrivals, seats, queues, service, need states, each guest's wait |
 | `WaveResult` / `WaveSatisfaction` | A finished wave: guests served, Wave Satisfaction % and the rating (Wave Complete) |
 | `GamePhase` | The Build doc's full state machine (WAVE_PAUSED and UPGRADE are not reached yet) |

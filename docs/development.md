@@ -25,6 +25,7 @@ The team splits the work by Jira ticket (OUR Sprint 2). Built so far:
 - **OUR-37, OUR-38, OUR-39**: Wave Needs Panel with "queue growing" and "catching up"
 - **OUR-45**: moving Workers
 - **OUR-40** and the wave evaluation: Wave Complete with rating stars, Wave Satisfaction % and Guests served
+- **Wave difficulty**: every wave is harder than the one before it (`WaveProgression`)
 
 **When working on a ticket, read its guide in [tasks/](tasks/README.md) first.** It holds the Build-doc rules,
 numbers, where the code goes and the tests to write. Each continuing ticket has a `// OUR-xx` hook in
