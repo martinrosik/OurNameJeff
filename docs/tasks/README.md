@@ -10,7 +10,7 @@ model as context (see the prompt template below).
 | Ticket | What's in the game |
 |---|---|
 | OUR-31 | Island with Reception, Restaurant, Beach Bar (Kenney placeholder art), palms, dock, guest boat |
-| OUR-27 | **Welcome Guests** button: `AWAITING_WAVE → WAVE_INCOMING` (boat sails in) `→ WAVE_ACTIVE`. The wave then stays in progress. |
+| OUR-27 | **Welcome Guests** button: `AWAITING_WAVE → WAVE_INCOMING` (boat sails in) `→ WAVE_ACTIVE`. The wave then runs until everyone is served (OUR-34, OUR-41, OUR-35). |
 | OUR-33 | Forecast before the wave: "Next: Wave 1 · 12 guests · Rooms 8 · Drinks 8 · Food 6", with which building has a Worker |
 | OUR-48 | Worker badge next to each building: green **W**, or grey **-** plus "No Worker" |
 | OUR-50 | Capacity: one seat square per seat (3 at level 1). Seats fill from `ResortGame.GetSeatedCount()`, which returns 0 until guests exist |

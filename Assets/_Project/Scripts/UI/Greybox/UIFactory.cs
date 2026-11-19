@@ -15,8 +15,13 @@ namespace ResortEmpire.UI
         private const float RoundedCornerScale = 3f;
 
         private static Sprite _rounded;
+        private static Sprite _star;
 
-        public static void Init(Sprite rounded) => _rounded = rounded;
+        public static void Init(Sprite rounded, Sprite star)
+        {
+            _rounded = rounded;
+            _star = star;
+        }
 
         public static RectTransform Rect(string name, Transform parent)
         {
@@ -60,6 +65,18 @@ namespace ResortEmpire.UI
                 image.pixelsPerUnitMultiplier = RoundedCornerScale;
             }
 
+            return image;
+        }
+
+        /// <summary>Wave evaluation: a five-pointed star tinted <paramref name="color"/> (the white placeholder star sprite).</summary>
+        public static Image Star(string name, Transform parent, Color color)
+        {
+            RectTransform rect = Rect(name, parent);
+            var image = rect.gameObject.AddComponent<Image>();
+            image.sprite = _star;
+            image.color = color;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
             return image;
         }
 

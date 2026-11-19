@@ -1907,7 +1907,6 @@ MonoBehaviour:
   frameRate: 12
   guestHeight: 0.45
   spawnSpacing: 0.35
-  minVisitSeconds: 1
   sortingOrder: 7
 --- !u!4 &695006963
 Transform:
@@ -3458,6 +3457,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.UI::ResortEmpire.UI.GreyboxUI
   controller: {fileID: 1857858098}
   roundedSprite: {fileID: 21300000, guid: 4b8c35c26ae97534fa1804d28ecf0515, type: 3}
+  starSprite: {fileID: 21300000, guid: 506b1209f8795334b97a72e8fd874c31, type: 3}
 --- !u!4 &1367210589
 Transform:
   m_ObjectHideFlags: 0

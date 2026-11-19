@@ -64,11 +64,15 @@ Sprint "OUR Sprint 2" is split across the team. This part is built:
 | OUR-33 | The forecast before the wave: how many guests need Rooms, Drinks and Food |
 | OUR-27 | **Welcome Guests** starts the wave: the boat sails in and the status says "WAVE 1 IN PROGRESS" |
 | OUR-34 | Guests arrive evenly over 90 s (Rooms 8, Drinks 8, Food 6 in wave 1). Animated guests walk from the boat to their buildings, a guest can visit several buildings, seats and queue squares fill when they get there |
-| OUR-41 / OUR-35 | After 90 s nobody new comes but nobody leaves. When everyone is served the guests walk back to the boat ("GUESTS LEAVING") and the wave completes. Needs service (OUR-46) to happen in play |
+| OUR-41 / OUR-35 | After 90 s nobody new comes but nobody leaves. When everyone is served the guests walk back to the boat ("GUESTS LEAVING") and the wave completes |
+| OUR-46 / OUR-47 | A building serves one guest per seat in 12 s with a Worker, about 36 s without |
+| OUR-37 / OUR-38 / OUR-39 | The Wave Needs Panel beside the island, with "queue growing" and "catching up" states, glows and short messages |
+| OUR-45 | Moving Workers before and during the wave: tap a building or a need |
+| OUR-40 + wave evaluation | Wave Complete: rating stars (PERFECT! for a Perfect wave), Wave Satisfaction %, Guests served, Continue. After wave 8, Play Again |
 
-Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). The wave stays in progress for
-now: guests, service, the needs panel, moving Workers and the wave end are other teammates' tickets. Each has a
-guide in [docs/tasks/](docs/tasks/README.md).
+Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). A whole wave plays: guests arrive,
+buildings serve them, you move Workers, and Wave Complete shows how it went. Each ticket has a guide in
+[docs/tasks/](docs/tasks/README.md); features of later sprints are in [docs/tasks/later.md](docs/tasks/later.md).
 
 Placeholder art comes from [Kenney](https://kenney.nl) (CC0, public domain): *City Kit (Suburban)* for the
 houses, *Pirate Kit* for palms, rocks, the dock and the ship, and *Mini Characters* for the guests who walk

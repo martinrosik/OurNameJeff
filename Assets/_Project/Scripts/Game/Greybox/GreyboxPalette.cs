@@ -16,6 +16,11 @@ namespace ResortEmpire.Game
         public static readonly Color Warning = new Color(0.90f, 0.25f, 0.22f);
         public static readonly Color Premium = new Color(1f, 0.90f, 0.62f);
 
+        // Wave evaluation: earned and not-yet-earned rating stars on Wave Complete, plus the earned stars' outline.
+        public static readonly Color StarEarned = new Color(1f, 0.78f, 0.16f);
+        public static readonly Color StarEarnedOutline = new Color(0.86f, 0.52f, 0.06f);
+        public static readonly Color StarEmpty = new Color(0.74f, 0.80f, 0.86f);
+
         public static readonly Color WorkerOn = new Color(0.18f, 0.70f, 0.38f);
         public static readonly Color WorkerOff = new Color(0.62f, 0.62f, 0.62f);
         public static readonly Color Guest = new Color(0.25f, 0.20f, 0.45f);

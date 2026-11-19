@@ -561,7 +561,40 @@ namespace ResortEmpire.Tests
             Assert.AreEqual("WAVE 1 COMPLETE", _ui.WaveComplete.TitleText);
             Assert.AreEqual("Wave 1 has ended. Well done!", _ui.WaveComplete.MessageText);
             Assert.AreEqual("12/12", _ui.WaveComplete.StatText);
+            Assert.IsTrue(_ui.WaveComplete.StarsVisible);
+            Assert.AreEqual(5, _ui.WaveComplete.EarnedStars, "Nobody waited in wave 1: Perfect shows all five stars.");
+            Assert.IsTrue(_ui.WaveComplete.PerfectVisible, "PERFECT! tells Perfect apart from five stars.");
+            Assert.AreEqual("100%", _ui.WaveComplete.SatisfactionText);
             Assert.IsFalse(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Continue is the only main button.");
+        }
+
+        [UnityTest]
+        public IEnumerator WaveEvaluation_ALongQueueShowsALowerRatingAndSatisfaction()
+        {
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 30; // a big Food demand on the empty Restaurant
+            try
+            {
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer + 600);
+                yield return null;
+                _island.Guests.FastForward(600f);
+                yield return null;
+                yield return null;
+                Assert.AreEqual(GamePhase.WaveComplete, Game.Phase);
+
+                WaveResult result = Game.LastWaveResult;
+                Assert.Less(result.Rating, WaveRating.ThreeStars);
+                Assert.IsTrue(_ui.WaveComplete.IsVisible);
+                Assert.AreEqual($"{(int)System.Math.Floor(result.Satisfaction + 1e-6)}%", _ui.WaveComplete.SatisfactionText);
+                Assert.AreEqual((int)result.Rating, _ui.WaveComplete.EarnedStars, "One gold star per tier reached, the rest grey.");
+                Assert.IsFalse(_ui.WaveComplete.PerfectVisible);
+                Assert.AreEqual("WAVE 1 COMPLETE", _ui.WaveComplete.TitleText, "Calm tone: the wave still completes.");
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
         }
 
         [UnityTest]
@@ -600,6 +633,11 @@ namespace ResortEmpire.Tests
             Assert.IsTrue(_ui.WaveComplete.IsVisible);
             Assert.AreEqual("WAVE 2 COMPLETE", _ui.WaveComplete.TitleText);
             Assert.AreEqual("18/18", _ui.WaveComplete.StatText);
+            Assert.AreEqual(2, Game.LastWaveResult.WaveNumber, "The card shows wave 2's own evaluation.");
+            Assert.AreEqual(WaveRating.FiveStars, Game.LastWaveResult.Rating, "Wave 2 left alone: a short Food queue, just under Perfect.");
+            Assert.AreEqual(5, _ui.WaveComplete.EarnedStars);
+            Assert.IsFalse(_ui.WaveComplete.PerfectVisible, "Five stars without PERFECT! is not a Perfect wave.");
+            Assert.AreEqual($"{(int)System.Math.Floor(Game.LastWaveResult.Satisfaction + 1e-6)}%", _ui.WaveComplete.SatisfactionText);
         }
 
         [UnityTest]
@@ -717,6 +755,9 @@ namespace ResortEmpire.Tests
             Assert.IsTrue(_ui.WaveComplete.IsVisible, "The dimmed card stays up after the last wave.");
             Assert.AreEqual("ALL WAVES PLAYED", _ui.WaveComplete.TitleText);
             Assert.AreEqual($"{waves}/{waves}", _ui.WaveComplete.StatText);
+            Assert.IsFalse(_ui.WaveComplete.StarsVisible, "No single wave's rating after the last wave.");
+            Assert.IsFalse(_ui.WaveComplete.PerfectVisible);
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.SatisfactionText);
             StringAssert.Contains("PLAY AGAIN", _ui.WaveComplete.ContinueButton.GetComponentInChildren<TMPro.TMP_Text>().text);
 
             _ui.WaveComplete.ContinueButton.onClick.Invoke();

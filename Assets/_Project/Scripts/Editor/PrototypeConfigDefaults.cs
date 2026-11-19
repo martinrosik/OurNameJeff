@@ -26,7 +26,19 @@ namespace ResortEmpire.Editor
                 bottleneckHysteresis = 3f, // OUR-38 / OUR-39: Build doc §4.8 bottleneck_hysteresis_s
                 serviceTime = 12f, // OUR-46: Build doc §4.8 service_time, 12 s per guest per seat (design-conflicts row 10)
                 utilizationStaffed = 1f, // OUR-46
-                utilizationEmpty = 0.33f, // OUR-47: 0.33 s ÷ 0.33 = 1 s per guest without a Worker
+                utilizationEmpty = 0.33f, // OUR-47: 12 s ÷ 0.33 ≈ 36 s per guest without a Worker
+            };
+
+            // Wave evaluation: Build doc §4.4 / §4.8 (patience_grace, patience_floor_after, unit_floor, wave_floor,
+            // rating_thresholds, ocean_view_satisfaction_weight).
+            config.satisfaction = new SatisfactionSettings
+            {
+                patienceGrace = 10f,
+                patienceFloorAfter = 30f,
+                unitFloor = 25f,
+                waveFloor = 40f,
+                ratingThresholds = new[] { 40f, 55f, 70f, 80f, 90f, 100f },
+                oceanViewSatisfactionWeight = 1.5f,
             };
 
             config.needs = new List<NeedDefinition>

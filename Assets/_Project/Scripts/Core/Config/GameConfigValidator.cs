@@ -29,6 +29,7 @@ namespace ResortEmpire.Core
                 if (config.wave.utilizationEmpty <= 0f) errors.Add($"WR2: utilizationEmpty must be above 0 (is {config.wave.utilizationEmpty}), or an empty building never finishes.");
             }
 
+            ValidateSatisfaction(config.satisfaction, errors);
             ValidateNeeds(config, errors);
             ValidateBuildings(config, errors);
 
@@ -42,6 +43,42 @@ namespace ResortEmpire.Core
             }
 
             return errors;
+        }
+
+        private static void ValidateSatisfaction(SatisfactionSettings satisfaction, List<string> errors)
+        {
+            if (satisfaction == null)
+            {
+                errors.Add("Satisfaction settings are missing.");
+                return;
+            }
+
+            if (satisfaction.patienceFloorAfter <= satisfaction.patienceGrace)
+            {
+                errors.Add($"patienceFloorAfter ({satisfaction.patienceFloorAfter} s) must be longer than patienceGrace ({satisfaction.patienceGrace} s).");
+            }
+
+            if (satisfaction.oceanViewSatisfactionWeight <= 0f) errors.Add($"oceanViewSatisfactionWeight must be above 0 (is {satisfaction.oceanViewSatisfactionWeight}).");
+
+            float[] thresholds = satisfaction.ratingThresholds;
+            if (thresholds == null || thresholds.Length != 6)
+            {
+                errors.Add("ratingThresholds needs 6 values: 1, 2, 3, 4, 5 stars and Perfect.");
+                return;
+            }
+
+            for (int i = 1; i < thresholds.Length; i++)
+            {
+                if (thresholds[i] <= thresholds[i - 1]) errors.Add($"ratingThresholds must grow: value {i + 1} ({thresholds[i]}) is not above value {i} ({thresholds[i - 1]}).");
+            }
+
+            if (thresholds[5] > 100f) errors.Add($"The Perfect threshold must be at most 100 % (is {thresholds[5]}).");
+
+            // WR1: otherwise a player who does nothing during the wave still gets a decent rating.
+            if (!(satisfaction.unitFloor < satisfaction.waveFloor && satisfaction.waveFloor < thresholds[2]))
+            {
+                errors.Add($"WR1: unitFloor ({satisfaction.unitFloor} %) < waveFloor ({satisfaction.waveFloor} %) < the 3-star threshold ({thresholds[2]} %) must hold.");
+            }
         }
 
         private static void ValidateNeeds(GameConfig config, List<string> errors)

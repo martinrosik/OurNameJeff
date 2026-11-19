@@ -11,7 +11,9 @@ the game and in EditMode tests. It follows the Build doc (§4.3–§4.10).
 | `ResortGame` | The game: phase state machine, buildings, Workers, forecast, wave start |
 | `BuildingRuntime` | One building's live state: level, Worker, seats (capacity) |
 | `WaveForecast` | Demand of a wave for the needs on the island (S1 forecast) |
-| `GamePhase` | The Build doc's full state machine (only the start of it is implemented) |
+| `WaveSimulation` | One wave in progress: arrivals, seats, queues, service, need states, each guest's wait |
+| `WaveResult` / `WaveSatisfaction` | A finished wave: guests served, Wave Satisfaction % and the rating (Wave Complete) |
+| `GamePhase` | The Build doc's full state machine (WAVE_PAUSED and UPGRADE are not reached yet) |
 
 ```csharp
 var game = new ResortGame(config);   // config = the GameConfig asset
@@ -23,12 +25,12 @@ game.Phase, game.WaveTime, game.IncomingRemaining
 game.GetNextWaveForecast()           // OUR-33
 game.GetBuilding(BuildingId.Restaurant).HasWorker   // OUR-48
 game.GetBuilding(BuildingId.Restaurant).Seats       // OUR-50 capacity (3 at level 1)
-game.GetSeatedCount(BuildingId.Restaurant)          // OUR-50 occupancy: 0 until guests exist
+game.GetSeatedCount(BuildingId.Restaurant)          // OUR-50 occupancy: guests seated right now
 game.PhaseChanged += (from, to) => { };
 ```
 
-The wave stays in WAVE_ACTIVE for now. `ResortGame.Tick()` has one `// OUR-xx` comment per sprint ticket that
-continues it.
+A wave runs WAVE_ACTIVE → WAVE_RESOLVING → WAVE_COMPLETE once everyone is served, and Continue returns to
+AWAITING_WAVE. `ResortGame.Tick()` has one `// OUR-xx` comment per sprint ticket that plugs into it.
 
 ## Tuning
 

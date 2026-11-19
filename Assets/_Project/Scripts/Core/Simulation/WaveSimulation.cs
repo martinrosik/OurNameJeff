@@ -12,6 +12,8 @@ namespace ResortEmpire.Core
     /// runs out. Arrivals are processed in time order from a precomputed schedule, so the result never depends on
     /// the frame rate. Only needs with a building on the island spawn (WR9). An arriving unit takes a free seat,
     /// or waits in the building's FIFO queue (the arrival time is kept for waiting time and satisfaction later).
+    /// Each unit's wait (arrival → seated) is recorded when it sits down (<see cref="GetWaitTimes"/>) for the Wave
+    /// Satisfaction on Wave Complete.
     /// </para>
     /// <para>
     /// <b>OUR-41 drain:</b> after the arrival timer nobody new comes, but nobody leaves either (WR4): every unit
@@ -188,7 +190,7 @@ namespace ResortEmpire.Core
         /// <returns>False when nobody of that need is seated.</returns>
         internal bool FinishService(NeedId need)
         {
-            if (!_needs.TryGetValue(need, out NeedQueue queue) || !queue.FinishService()) return false;
+            if (!_needs.TryGetValue(need, out NeedQueue queue) || !queue.FinishService(Time)) return false;
             CheckStates();
             return true;
         }
@@ -201,6 +203,13 @@ namespace ResortEmpire.Core
                 foreach (NeedQueue need in _needList) yield return need.Need;
             }
         }
+
+        /// <summary>
+        /// Wave Satisfaction: how long each unit of a need that has sat down waited (arrival → seated, in seconds), in
+        /// the order they sat down. Empty for a need that isn't in this wave.
+        /// </summary>
+        public IReadOnlyList<double> GetWaitTimes(NeedId need) =>
+            _needs.TryGetValue(need, out NeedQueue queue) ? queue.WaitTimes : (IReadOnlyList<double>)Array.Empty<double>();
 
         /// <summary>Arrival time of unit <paramref name="index"/> (0-based) of a need.</summary>
         public double GetArrivalTime(NeedId need, int index) => Get(need).ArrivalTimes[index];
@@ -394,6 +403,11 @@ namespace ResortEmpire.Core
             /// <summary>Work left (1 - progress) of each seated unit, in the order they sat down.</summary>
             private readonly List<double> _remaining = new List<double>();
 
+            /// <summary>Wave Satisfaction: waiting time (arrival → seated) of every unit that has sat down.</summary>
+            private readonly List<double> _waitTimes = new List<double>();
+
+            public IReadOnlyList<double> WaitTimes => _waitTimes;
+
             /// <summary>Wave time of this need's next arrival or service end (infinity when there is none).</summary>
             public double NextEventTime(double now)
             {
@@ -427,7 +441,7 @@ namespace ResortEmpire.Core
                     {
                         _remaining.RemoveAt(i);
                         Served++;
-                        SeatNextInLine();
+                        SeatNextInLine(now);
                         any = true;
                     }
                     else
@@ -445,12 +459,12 @@ namespace ResortEmpire.Core
                 return any;
             }
 
-            public bool FinishService()
+            public bool FinishService(double now)
             {
                 if (_remaining.Count == 0) return false;
                 _remaining.RemoveAt(0);
                 Served++;
-                SeatNextInLine();
+                SeatNextInLine(now);
                 return true;
             }
 
@@ -460,6 +474,7 @@ namespace ResortEmpire.Core
                 if (_remaining.Count < Seats)
                 {
                     _remaining.Add(1);
+                    _waitTimes.Add(0); // a free seat: no waiting (AC1b)
                 }
                 else
                 {
@@ -467,12 +482,13 @@ namespace ResortEmpire.Core
                 }
             }
 
-            private void SeatNextInLine()
+            private void SeatNextInLine(double now)
             {
                 if (Waiting.Count > 0 && _remaining.Count < Seats)
                 {
-                    Waiting.Dequeue();
+                    double arrivalTime = Waiting.Dequeue();
                     _remaining.Add(1);
+                    _waitTimes.Add(Math.Max(0, now - arrivalTime));
                 }
             }
         }

@@ -125,16 +125,12 @@ namespace ResortEmpire.Game
 
             if (_wave == null) return;
 
+            // Every building of the game gets an entry, also one without a view: otherwise its guests would never step off and the wave could never end.
             foreach (BuildingRuntime runtime in game.Buildings)
             {
-                BuildingView view = island.GetView(runtime.Id);
-                if (view == null) continue;
-
                 if (!_buildings.TryGetValue(runtime.Need, out Building building))
                 {
-                    Vector3 origin = transform.InverseTransformPoint(view.transform.position);
-                    DoorSetup setup = Array.Find(doorSetups, d => d != null && d.building == runtime.Id);
-                    building = new Building(origin + (setup != null ? setup.door : entranceOffset));
+                    building = new Building(GetDoor(runtime.Id, island));
                     _buildings[runtime.Need] = building;
                 }
 
@@ -174,6 +170,21 @@ namespace ResortEmpire.Game
                     _walkers.RemoveAt(i);
                 }
             }
+        }
+
+        /// <summary>Where guests walk into a building: its door, or the plaza when the building has no view on the island.</summary>
+        private Vector3 GetDoor(BuildingId building, IslandView island)
+        {
+            BuildingView view = island.GetView(building);
+            if (view == null)
+            {
+                Debug.LogWarning($"{building} has no BuildingView on the island, so its guests walk to the plaza. Rebuild the scene with Resort Empire > Greybox > Rebuild Greybox Scene.", this);
+                return plazaPosition;
+            }
+
+            Vector3 origin = transform.InverseTransformPoint(view.transform.position);
+            DoorSetup setup = Array.Find(doorSetups, d => d != null && d.building == building);
+            return origin + (setup != null ? setup.door : entranceOffset);
         }
 
         private bool IsReleased(GuestVisit visit) =>

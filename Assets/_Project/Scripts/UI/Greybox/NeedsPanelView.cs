@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ResortEmpire.Core;
+using ResortEmpire.Game;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ResortEmpire.Core;
 using UnityEngine;
 
@@ -17,7 +18,6 @@ namespace ResortEmpire.Game
         [Tooltip("Speeds the simulation up for testing. 1 = real time.")]
         [SerializeField, Range(0f, 8f)] private float simulationSpeed = 1f;
 
-        public GameConfig Config => config;
         public ResortGame Game { get; private set; }
 
         public float SimulationSpeed
@@ -34,6 +34,15 @@ namespace ResortEmpire.Game
             if (config == null)
             {
                 Debug.LogError("GameController has no GameConfig. Assign Assets/_Project/Data/Config_Prototype.asset.", this);
+                enabled = false;
+                return;
+            }
+
+            // A broken config would crash or freeze the game later, far from the cause, so it stops here with every problem listed.
+            List<string> errors = GameConfigValidator.Validate(config);
+            if (errors.Count > 0)
+            {
+                Debug.LogError($"GameConfig {config.name} has problems, so the game doesn't start:\n- {string.Join("\n- ", errors)}", this);
                 enabled = false;
                 return;
             }
