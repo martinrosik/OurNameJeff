@@ -30,6 +30,11 @@ namespace ResortEmpire.Game
         public static readonly Color BottleneckGlow = new Color(0.90f, 0.25f, 0.22f, 0.55f);
         public static readonly Color RecoveringGlow = new Color(0.18f, 0.70f, 0.38f, 0.5f);
 
+        // Needs panel icons, served counts and bars (Figma S2): green = all served or catching up, amber = guests still being served, red = queue growing.
+        public static readonly Color NeedGood = new Color32(0x10, 0xB9, 0x81, 0xFF);
+        public static readonly Color NeedInProgress = new Color32(0xF5, 0x9E, 0x0B, 0xFF);
+        public static readonly Color NeedBottleneck = new Color32(0xEF, 0x44, 0x44, 0xFF);
+
         public static Color ForBuilding(BuildingId building)
         {
             switch (building)

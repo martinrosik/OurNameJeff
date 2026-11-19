@@ -3458,6 +3458,9 @@ MonoBehaviour:
   controller: {fileID: 1857858098}
   roundedSprite: {fileID: 21300000, guid: 4b8c35c26ae97534fa1804d28ecf0515, type: 3}
   starSprite: {fileID: 21300000, guid: 506b1209f8795334b97a72e8fd874c31, type: 3}
+  roomsIcon: {fileID: 21300000, guid: a8769e0779384594a8323eaeb539376e, type: 3}
+  drinksIcon: {fileID: 21300000, guid: 0ded291f869be4345824b3351b5ce3c7, type: 3}
+  foodIcon: {fileID: 21300000, guid: 951f3067efdb2c145bf0b5a7f228f4fb, type: 3}
 --- !u!4 &1367210589
 Transform:
   m_ObjectHideFlags: 0
