@@ -19,9 +19,12 @@ namespace ResortEmpire.UI
         private static readonly float[] StarCentreFromTop = { 36f, 30f, 26f, 30f, 36f };
         private static readonly float[] StarTilt = { 18f, 9f, 0f, -9f, -18f };
 
+        // The outline is the same star drawn slightly bigger behind the fill, so the tips stay sharp (an Outline effect flattens them).
+        private const float OutlineWidth = 2f;
+
         private readonly RectTransform _root;
         private readonly Image[] _stars = new Image[StarCount];
-        private readonly Outline[] _outlines = new Outline[StarCount];
+        private readonly Image[] _outlines = new Image[StarCount];
         private int _earned;
 
         public RatingStarsView(Transform parent)
@@ -32,13 +35,12 @@ namespace ResortEmpire.UI
             var center = new Vector2(0.5f, 0.5f);
             for (int i = 0; i < StarCount; i++)
             {
-                Image star = UIFactory.Star($"Star{i + 1}", _root, GreyboxPalette.StarEmpty);
-                star.rectTransform.At(top, center, new Vector2(StarX[i], -StarCentreFromTop[i]), Vector2.one * StarSizes[i]);
-                star.rectTransform.localRotation = Quaternion.Euler(0f, 0f, StarTilt[i]);
+                Image outline = UIFactory.Star($"Star{i + 1}", _root, GreyboxPalette.StarEmpty);
+                outline.rectTransform.At(top, center, new Vector2(StarX[i], -StarCentreFromTop[i]), Vector2.one * StarSizes[i]);
+                outline.rectTransform.localRotation = Quaternion.Euler(0f, 0f, StarTilt[i]);
 
-                Outline outline = star.gameObject.AddComponent<Outline>();
-                outline.effectColor = GreyboxPalette.StarEarnedOutline;
-                outline.effectDistance = new Vector2(1f, -1f);
+                Image star = UIFactory.Star("Fill", outline.transform, GreyboxPalette.StarEmpty);
+                star.rectTransform.At(center, center, Vector2.zero, Vector2.one * (StarSizes[i] - 2f * OutlineWidth));
 
                 _stars[i] = star;
                 _outlines[i] = outline;
@@ -59,7 +61,7 @@ namespace ResortEmpire.UI
             {
                 bool isEarned = i < earned;
                 _stars[i].color = isEarned ? GreyboxPalette.StarEarned : GreyboxPalette.StarEmpty;
-                _outlines[i].enabled = isEarned;
+                _outlines[i].color = isEarned ? GreyboxPalette.StarEarnedOutline : GreyboxPalette.StarEmpty;
             }
 
             _root.gameObject.SetActive(true);
