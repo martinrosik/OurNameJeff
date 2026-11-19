@@ -140,20 +140,8 @@ namespace ResortEmpire.Core
         public WaveForecast GetNextWaveForecast() => HasNextWave ? GetForecast(CompletedWaves) : null;
 
         /// <summary>Demand for a wave, limited to needs that have a building on the island.</summary>
-        public WaveForecast GetForecast(int waveIndex)
-        {
-            WaveDefinition wave = Config.waves[waveIndex];
-            var demand = new List<NeedDemand>();
-            foreach (NeedDefinition need in Config.needs)
-            {
-                if (Config.GetBuildingForNeed(need.need) != null)
-                {
-                    demand.Add(new NeedDemand(need.need, wave.GetDemand(need.need)));
-                }
-            }
-
-            return new WaveForecast(waveIndex, wave.guests, demand);
-        }
+        /// <remarks>Always bigger than the wave before it (<see cref="WaveProgression"/>).</remarks>
+        public WaveForecast GetForecast(int waveIndex) => WaveProgression.GetForecast(Config, waveIndex);
 
         /// <summary>
         /// OUR-45: Workers can be moved before the wave (AWAITING_WAVE), while the boat comes in and during the wave,

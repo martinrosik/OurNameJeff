@@ -36,6 +36,9 @@ namespace ResortEmpire.Core
         [Tooltip("OUR-38 / OUR-39: seconds the queue must have grown before the warning shows or comes back, so it doesn't flicker (doc: 3 s, TUNING 1–10).")]
         [Min(0.1f)] public float bottleneckHysteresis = 3f;
 
+        [Tooltip("Wave difficulty: every wave is harder than the one before it. When the wave table's next wave isn't bigger in total for the needs on the island (waves 4 and 7 debut needs whose buildings aren't built), the previous wave's demand and guests grow by this share instead, rounded up (0.125 = +12.5 %). Kept below the table's ~25 % growth, so the waves after it keep their table numbers.")]
+        [Min(0.01f)] public float growthIfNotHarder = 0.125f;
+
         /// <summary>Seconds one seat takes to serve one guest, with or without a Worker.</summary>
         public double GetServiceSeconds(bool hasWorker) => serviceTime / (double)(hasWorker ? utilizationStaffed : utilizationEmpty);
     }

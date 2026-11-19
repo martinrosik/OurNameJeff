@@ -69,6 +69,7 @@ Sprint "OUR Sprint 2" is split across the team. This part is built:
 | OUR-37 / OUR-38 / OUR-39 | The Wave Needs Panel beside the island, with "queue growing" and "catching up" states, glows and short messages |
 | OUR-45 | Moving Workers before and during the wave: tap a building or a need |
 | OUR-40 + wave evaluation | Wave Complete: rating stars (PERFECT! for a Perfect wave), Wave Satisfaction %, Guests served, Continue. After wave 8, Play Again |
+| Wave difficulty | Every wave is harder than the one before it: 22, 38, 48, 55, 60, 75, 86, 94 need units. Waves 4 and 7 (whose Pool/Bungalows can't be built yet) grow 12.5 % over the wave before them |
 
 Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). A whole wave plays: guests arrive,
 buildings serve them, you move Workers, and Wave Complete shows how it went. Each ticket has a guide in

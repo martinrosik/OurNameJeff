@@ -27,6 +27,7 @@ namespace ResortEmpire.Editor
                 serviceTime = 12f, // OUR-46: Build doc §4.8 service_time, 12 s per guest per seat (design-conflicts row 10)
                 utilizationStaffed = 1f, // OUR-46
                 utilizationEmpty = 0.33f, // OUR-47: 12 s ÷ 0.33 ≈ 36 s per guest without a Worker
+                growthIfNotHarder = 0.125f, // Wave difficulty: waves 4 and 7 grow 12.5 % over the wave before them (not in the Build doc, TUNING)
             };
 
             // Wave evaluation: Build doc §4.4 / §4.8 (patience_grace, patience_floor_after, unit_floor, wave_floor,
