@@ -251,8 +251,11 @@ namespace ResortEmpire.Core
             // and FinishResolving() completes the wave. OUR-40 tells the player.
             if (CurrentWave.IsFinished)
             {
+                // Wave evaluation: Wave Satisfaction is computed only now, from every unit's wait (Build doc §4.4).
+                double satisfaction = WaveSatisfaction.Calculate(CurrentWave, Config.satisfaction);
                 LastWaveResult = new WaveResult(
-                    CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime);
+                    CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime,
+                    satisfaction, WaveSatisfaction.GetRating(satisfaction, Config.satisfaction));
                 SetPhase(GamePhase.WaveResolving);
             }
         }
