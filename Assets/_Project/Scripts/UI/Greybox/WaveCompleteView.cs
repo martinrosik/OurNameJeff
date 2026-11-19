@@ -11,7 +11,7 @@ namespace ResortEmpire.UI
     /// OUR-40 / UI doc S4 Wave Complete: a card in the middle of the dimmed screen once the wave is over.
     /// One main button, Continue, returns to the island with the next wave's forecast.
     /// After the last wave the same card says ALL WAVES PLAYED, and its button, Play Again, starts a new game.
-    /// Stars, rewards and "What went well" join the card in a later sprint.
+    /// Rewards and "What went well" join the card in a later sprint.
     /// Wave evaluation: the card shows the rating as five stars in an arc (plus PERFECT! for a Perfect wave), then
     /// the Wave Satisfaction % and Guests served, one row each.
     /// </summary>

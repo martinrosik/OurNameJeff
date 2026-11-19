@@ -6,7 +6,7 @@ namespace ResortEmpire.Core
     /// <summary>
     /// One scripted wave (Build doc §4.8 "Progresia vĺn"). Demand is in need units, not guests; a guest carries
     /// about 2 needs on average. Needs without a building on the island are left out of the forecast.
-    /// Today the table feeds the forecast (OUR-33); OUR-34 will spawn these units over the arrival phase.
+    /// The table feeds the forecast (OUR-33), and OUR-34 spawns these units over the arrival phase.
     /// </summary>
     [Serializable]
     public sealed class WaveDefinition

@@ -16,10 +16,15 @@ anonymous Workers to bottlenecked buildings, then upgrades between waves. Curren
 
 The team splits the work by Jira ticket (OUR Sprint 2). Built so far:
 - **OUR-31**: island + Reception, Restaurant, Beach Bar
-- **OUR-27**: Welcome Guests; the wave starts and stays in progress
+- **OUR-27**: Welcome Guests starts the wave
 - **OUR-33**: forecast
 - **OUR-48**: Worker indicator
 - **OUR-50**: capacity seats
+- **OUR-34, OUR-41, OUR-35**: guests arrive over 90 s, the last ones are served, the wave ends
+- **OUR-46, OUR-47**: service with and without a Worker
+- **OUR-37, OUR-38, OUR-39**: Wave Needs Panel with "queue growing" and "catching up"
+- **OUR-45**: moving Workers
+- **OUR-40** and the wave evaluation: Wave Complete with rating stars, Wave Satisfaction % and Guests served
 
 **When working on a ticket, read its guide in [tasks/](tasks/README.md) first.** It holds the Build-doc rules,
 numbers, where the code goes and the tests to write. Each continuing ticket has a `// OUR-xx` hook in

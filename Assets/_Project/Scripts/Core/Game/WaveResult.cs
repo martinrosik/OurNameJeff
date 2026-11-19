@@ -2,7 +2,7 @@ namespace ResortEmpire.Core
 {
     /// <summary>
     /// OUR-35: what happened in a finished wave, computed in WAVE_RESOLVING. OUR-40 shows it on Wave Complete
-    /// ("Guests served 12/12"). Satisfaction, stars and rewards are added in a later sprint.
+    /// ("Guests served 12/12").
     /// Wave evaluation: the Wave Satisfaction % and its star rating, shown on Wave Complete. Rewards come later.
     /// </summary>
     public sealed class WaveResult

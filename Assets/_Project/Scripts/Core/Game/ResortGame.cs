@@ -10,9 +10,9 @@ namespace ResortEmpire.Core
     /// building capacity (shown by OUR-50), the next-wave forecast (OUR-33), the manual wave start (OUR-27):
     /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE, guest arrivals over the 90 s arrival phase
     /// (OUR-34, <see cref="WaveSimulation"/>), the drain after it (OUR-41) and the wave end (OUR-35):
-    /// WAVE_ACTIVE → WAVE_RESOLVING (everyone served, guests return to the boat) → WAVE_COMPLETE. The rest comes with the
-    /// teammates' tickets add guests and the wave end. Each one has a <c>// OUR-xx</c> hook below and a guide in
-    /// <c>docs/tasks/</c>.
+    /// WAVE_ACTIVE → WAVE_RESOLVING (everyone served, guests return to the boat) → WAVE_COMPLETE, with the wave
+    /// evaluation (Wave Satisfaction and rating, <see cref="WaveSatisfaction"/>). Each ticket has a <c>// OUR-xx</c>
+    /// hook below and a guide in <c>docs/tasks/</c>; later sprints are listed in <c>docs/tasks/later.md</c>.
     /// </para>
     /// The Game layer calls <see cref="Tick"/> every frame and forwards player intents; views read state.
     /// </summary>
