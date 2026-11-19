@@ -18,7 +18,9 @@
 
 ## Branches, commits, pull requests
 
-- `main` is always openable and playable. Nobody pushes to it directly. Everything goes through a pull request.
+- `develop` is the team's working branch. Create your branch from `develop` and merge it back into `develop`
+  through a pull request.
+- `main` is always openable and playable. Nobody pushes to it directly; it gets the work from `develop`.
 - One branch per Jira ticket, named `<JIRA-KEY>-short-description`, for example `RE-12-wave-needs-panel`.
 - Commit messages are plain English in the imperative, with no Jira keys:
   `Add Welcome Guests and the forecast panel, build the island scene`.
