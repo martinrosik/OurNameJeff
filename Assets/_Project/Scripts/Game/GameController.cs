@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ResortEmpire.Core;
 using UnityEngine;
 
@@ -34,6 +35,15 @@ namespace ResortEmpire.Game
             if (config == null)
             {
                 Debug.LogError("GameController has no GameConfig. Assign Assets/_Project/Data/Config_Prototype.asset.", this);
+                enabled = false;
+                return;
+            }
+
+            // A broken config would crash or freeze the game later, far from the cause, so it stops here with every problem listed.
+            List<string> errors = GameConfigValidator.Validate(config);
+            if (errors.Count > 0)
+            {
+                Debug.LogError($"GameConfig {config.name} has problems, so the game doesn't start:\n- {string.Join("\n- ", errors)}", this);
                 enabled = false;
                 return;
             }

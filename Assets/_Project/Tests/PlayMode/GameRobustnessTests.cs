@@ -113,5 +113,24 @@ namespace ResortEmpire.Tests
             Assert.IsTrue(restaurant.gameObject.activeSelf, "Shown again once the Restaurant is back.");
             Assert.AreEqual(3, restaurant.ShownSeats);
         }
+
+        [Test]
+        public void ABrokenConfigStopsTheGameWithAClearError()
+        {
+            GameConfig broken = CopyOfShippedConfig();
+            broken.satisfaction.unitFloor = 60f; // WR1: above the wave floor
+
+            var holder = new GameObject("BrokenGame");
+            _copies.Add(holder);
+            holder.SetActive(false);
+            var controller = holder.AddComponent<GameController>();
+            SetConfig(controller, broken);
+
+            LogAssert.Expect(LogType.Error, new Regex("has problems, so the game doesn't start(.|\\n)*WR1"));
+            holder.SetActive(true); // Awake runs now
+
+            Assert.IsNull(controller.Game, "No game is created from a broken config.");
+            Assert.IsFalse(controller.enabled);
+        }
     }
 }
