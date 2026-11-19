@@ -24,6 +24,7 @@ namespace ResortEmpire.UI
 
         [SerializeField] private GameController controller;
         [SerializeField] private Sprite roundedSprite;
+        [SerializeField] private Sprite starSprite;
 
         private ResortGame _game;
         private HudView _hud;
@@ -55,7 +56,7 @@ namespace ResortEmpire.UI
                 return;
             }
 
-            UIFactory.Init(roundedSprite);
+            UIFactory.Init(roundedSprite, starSprite);
             Build();
             _game = controller.Game;
             _island = FindAnyObjectByType<IslandView>();

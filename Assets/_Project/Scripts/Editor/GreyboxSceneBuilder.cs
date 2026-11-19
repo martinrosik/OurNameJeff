@@ -44,7 +44,7 @@ namespace ResortEmpire.Editor
         [MenuItem("Resort Empire/Greybox/Rebuild Greybox Scene", priority = 301)]
         public static void Build()
         {
-            if (GreyboxArtGenerator.Square == null || GreyboxArtGenerator.Rounded == null || GreyboxArtGenerator.Circle == null)
+            if (GreyboxArtGenerator.Square == null || GreyboxArtGenerator.Rounded == null || GreyboxArtGenerator.Circle == null || GreyboxArtGenerator.Star == null)
             {
                 GreyboxArtGenerator.Generate();
             }
@@ -86,6 +86,7 @@ namespace ResortEmpire.Editor
             var ui = uiObject.AddComponent<GreyboxUI>();
             SetReference(ui, "controller", controller);
             SetReference(ui, "roundedSprite", GreyboxArtGenerator.Rounded);
+            SetReference(ui, "starSprite", GreyboxArtGenerator.Star);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);

@@ -89,17 +89,9 @@ namespace ResortEmpire.UI
         /// <summary>Everyone is always served (WR4), so both numbers are the wave's guests.</summary>
         public static string GuestsServed(WaveResult result) => $"{result.Guests}/{result.Guests}";
 
-        // Wave evaluation: the rating and Wave Satisfaction, shown for the first time on Wave Complete.
-        public const string RatingLabel = "Rating";
+        // Wave evaluation: the rating stars and Wave Satisfaction, shown for the first time on Wave Complete.
+        public const string PerfectLabel = "PERFECT!";
         public const string WaveSatisfactionLabel = "Wave Satisfaction";
-
-        /// <summary>"4 STARS", "1 STAR" or "PERFECT" (plain text: the font has no star glyph).</summary>
-        public static string Rating(WaveRating rating)
-        {
-            if (rating == WaveRating.Perfect) return "PERFECT";
-            int stars = (int)rating;
-            return stars == 1 ? "1 STAR" : $"{stars} STARS";
-        }
 
         /// <summary>"88%". Rounded down, so the shown % never reaches a star threshold the wave missed.</summary>
         public static string WaveSatisfaction(WaveResult result) => $"{(int)Math.Floor(result.Satisfaction + 1e-6)}%";
