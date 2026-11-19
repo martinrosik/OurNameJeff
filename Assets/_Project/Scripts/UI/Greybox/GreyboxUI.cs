@@ -26,6 +26,11 @@ namespace ResortEmpire.UI
         [SerializeField] private Sprite roundedSprite;
         [SerializeField] private Sprite starSprite;
 
+        // Need icons on the forecast and the Wave Needs Panel (Figma S2), white so the panels can tint them.
+        [SerializeField] private Sprite roomsIcon;
+        [SerializeField] private Sprite drinksIcon;
+        [SerializeField] private Sprite foodIcon;
+
         private ResortGame _game;
         private HudView _hud;
         private NeedsPanelView _needs;
@@ -56,7 +61,7 @@ namespace ResortEmpire.UI
                 return;
             }
 
-            UIFactory.Init(roundedSprite, starSprite);
+            UIFactory.Init(roundedSprite, starSprite, roomsIcon, drinksIcon, foodIcon);
             Build();
             _game = controller.Game;
             _island = FindAnyObjectByType<IslandView>();

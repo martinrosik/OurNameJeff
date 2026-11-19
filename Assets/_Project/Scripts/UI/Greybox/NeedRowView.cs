@@ -17,11 +17,16 @@ namespace ResortEmpire.UI
         private static readonly Color BottleneckRowColor = GreyboxPalette.Warning.Lighten(0.75f);
         private static readonly Color RecoveringRowColor = GreyboxPalette.WorkerOn.Lighten(0.75f);
 
+        private const float IconSize = 22f;
+        private const float ContentLeft = 36f;
+
         private readonly GreyboxUI _owner;
         private readonly Image _background;
+        private readonly Image _icon;
         private readonly TextMeshProUGUI _progress;
         private readonly TextMeshProUGUI _staffing;
         private readonly RectTransform _barFill;
+        private readonly Image _barFillImage;
         private readonly TextMeshProUGUI _state;
         private readonly TextMeshProUGUI _queue;
         private BuildingId _building;
@@ -37,8 +42,11 @@ namespace ResortEmpire.UI
             Button.onClick.AddListener(OnTapped);
 
             Transform row = _background.transform;
+            _icon = UIFactory.Icon("Icon", row, null, Color.white);
+            _icon.rectTransform.At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(8f, 0f), new Vector2(IconSize, IconSize));
+
             _progress = UIFactory.Text("Progress", row, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
-            _progress.rectTransform.Fill(8, 158, 4, 26);
+            _progress.rectTransform.Fill(ContentLeft, 158, 4, 26);
             _progress.enableAutoSizing = true; // the longest name, "Ocean View  16/16", must shrink to leave room for the building
             _progress.fontSizeMin = 11f;
             _progress.fontSizeMax = 13f;
@@ -46,21 +54,26 @@ namespace ResortEmpire.UI
             _staffing.rectTransform.Fill(124, 8, 4, 26);
 
             _barFill = UIFactory.Bar("ProgressBar", row, GreyboxPalette.PanelBlue, GreyboxPalette.Primary);
-            ((RectTransform)_barFill.parent).Fill(8, 8, 23, 19);
+            ((RectTransform)_barFill.parent).Fill(ContentLeft, 8, 23, 19);
+            _barFillImage = _barFill.GetComponent<Image>();
 
             _state = UIFactory.Text("State", row, string.Empty, 11, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
-            _state.rectTransform.Fill(8, 147, 30, 3);
+            _state.rectTransform.Fill(ContentLeft, 147, 30, 3);
             _queue = UIFactory.Text("Queue", row, string.Empty, 11, StaffedColor, TextAlignmentOptions.MidlineRight);
             _queue.rectTransform.Fill(141, 8, 30, 3);
         }
 
         public Button Button { get; }
         public bool IsVisible => _background.gameObject.activeSelf;
-        public string ProgressText => _progress.text;
+        /// <summary>"Food  2/6" as the player reads it, without the count's color tag.</summary>
+        public string ProgressText => _progress.GetParsedText();
         public string StaffingText => _staffing.text;
         public string StateText => _state.text;
         public Color StateColor => _state.color;
         public string QueueText => _queue.text;
+        public Sprite IconSprite => _icon.sprite;
+        public Color IconColor => _icon.color;
+        public Color BarColor => _barFillImage.color;
 
         /// <summary>The filled part of the progress bar, from 0 to 1.</summary>
         public float BarFraction => _barFill.anchorMax.x;
@@ -71,16 +84,22 @@ namespace ResortEmpire.UI
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
             NeedState state = game.GetNeedState(need);
+            Color stateColor = GetStateColor(state);
+            Sprite icon = UIFactory.GetNeedIcon(need);
 
             _building = building.Id;
             _background.gameObject.SetActive(true);
             _background.color = GetRowColor(state, isPremium);
-            _progress.text = GameText.NeedProgress(game, status);
+            _icon.sprite = icon;
+            _icon.enabled = icon != null;
+            _icon.color = stateColor;
+            _progress.text = GameText.NeedProgress(game, status, stateColor);
             _staffing.text = GameText.BuildingStaffing(building);
             _staffing.color = building.HasWorker ? StaffedColor : GreyboxPalette.Warning;
             _barFill.SetFill(status.Total > 0 ? (float)status.Served / status.Total : 0f);
+            _barFillImage.color = stateColor;
             _state.text = GameText.NeedStateLabel(state, isPremium);
-            _state.color = GetStateColor(state);
+            _state.color = stateColor;
             _queue.text = GameText.NeedQueue(status, building);
         }
 
@@ -96,13 +115,15 @@ namespace ResortEmpire.UI
             }
         }
 
+        /// <summary>One color per state for the icon, the served count, the bar and the state label.</summary>
         private static Color GetStateColor(NeedState state)
         {
             switch (state)
             {
-                case NeedState.Bottleneck: return GreyboxPalette.Warning;
-                case NeedState.Recovering: return GreyboxPalette.WorkerOn;
-                default: return UIFactory.Ink;
+                case NeedState.Bottleneck: return GreyboxPalette.NeedBottleneck;
+                case NeedState.Recovering:
+                case NeedState.Satisfied: return GreyboxPalette.NeedGood;
+                default: return GreyboxPalette.NeedInProgress;
             }
         }
 

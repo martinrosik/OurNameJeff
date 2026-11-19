@@ -19,14 +19,15 @@ namespace ResortEmpire.UI
     internal sealed class HudView
     {
         private const int ForecastRows = 5;
+        private const float ForecastIconSize = 18f;
 
         private readonly GreyboxUI _owner;
         private readonly TextMeshProUGUI _status;
         private readonly GameObject _forecastPanel;
         private readonly TextMeshProUGUI _title;
         private readonly TextMeshProUGUI _subtitle;
-        private readonly List<(GameObject row, TextMeshProUGUI need, TextMeshProUGUI building)> _rows =
-            new List<(GameObject, TextMeshProUGUI, TextMeshProUGUI)>();
+        private readonly List<(GameObject row, Image icon, TextMeshProUGUI need, TextMeshProUGUI building)> _rows =
+            new List<(GameObject, Image, TextMeshProUGUI, TextMeshProUGUI)>();
         private readonly TextMeshProUGUI _note;
         private readonly Button _startWave;
         private readonly TextMeshProUGUI _hint;
@@ -61,11 +62,13 @@ namespace ResortEmpire.UI
             {
                 Image row = UIFactory.Panel($"ForecastRow{i}", panel.transform, UIFactory.RowBackground);
                 row.rectTransform.At(new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(10f, -60f - i * 30f), new Vector2(280f, 26f));
+                Image icon = UIFactory.Icon("Icon", row.transform, null, UIFactory.Ink); // before the wave every need uses the same calm color
+                icon.rectTransform.At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(8f, 0f), new Vector2(ForecastIconSize, ForecastIconSize));
                 TextMeshProUGUI need = UIFactory.Text("Need", row.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
-                need.rectTransform.Fill(8, 120, 0, 0);
+                need.rectTransform.Fill(32, 120, 0, 0);
                 TextMeshProUGUI building = UIFactory.Text("Building", row.transform, string.Empty, 11, UIFactory.Ink, TextAlignmentOptions.MidlineRight);
                 building.rectTransform.Fill(110, 8, 0, 0);
-                _rows.Add((row.gameObject, need, building));
+                _rows.Add((row.gameObject, icon, need, building));
             }
 
             _note = UIFactory.Text("Note", panel.transform, string.Empty, 11, UIFactory.Ink.WithAlpha(0.75f), TextAlignmentOptions.TopLeft);
@@ -88,7 +91,7 @@ namespace ResortEmpire.UI
             get
             {
                 int count = 0;
-                foreach ((GameObject row, TextMeshProUGUI _, TextMeshProUGUI _) in _rows)
+                foreach ((GameObject row, Image _, TextMeshProUGUI _, TextMeshProUGUI _) in _rows)
                 {
                     if (row.activeSelf) count++;
                 }
@@ -96,6 +99,9 @@ namespace ResortEmpire.UI
                 return count;
             }
         }
+
+        /// <summary>The icon of forecast row <paramref name="index"/> (Rooms, Drinks, Food in wave 1).</summary>
+        public Image GetForecastIcon(int index) => _rows[index].icon;
 
         public void Refresh(ResortGame game)
         {
@@ -138,11 +144,13 @@ namespace ResortEmpire.UI
                 BuildingRuntime building = definition != null ? game.GetBuilding(definition.building) : null;
                 bool staffed = building != null && building.HasWorker;
 
-                (GameObject row, TextMeshProUGUI need, TextMeshProUGUI place) = _rows[index];
+                (GameObject row, Image icon, TextMeshProUGUI need, TextMeshProUGUI place) = _rows[index];
                 row.SetActive(true);
+                icon.sprite = UIFactory.GetNeedIcon(demand.Need);
+                icon.enabled = icon.sprite != null;
                 need.text = GameText.ForecastDemand(game, demand);
                 string staffing = GameText.ForecastStaffing(definition?.displayName, staffed);
-                place.text = staffed ? staffing : $"<color=#{ColorUtility.ToHtmlStringRGB(GreyboxPalette.Warning)}>{staffing}</color>";
+                place.text = staffed ? staffing : GameText.Colored(staffing, GreyboxPalette.Warning);
                 index++;
             }
 

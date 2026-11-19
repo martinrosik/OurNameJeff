@@ -7,6 +7,7 @@ using ResortEmpire.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace ResortEmpire.Tests
 {
@@ -29,6 +30,14 @@ namespace ResortEmpire.Tests
         /// the real asset, so <see cref="RestoreServiceTime"/> puts the value back.
         /// </summary>
         private void PauseService() => Game.Config.wave.serviceTime = 1_000_000f;
+
+        /// <summary>The icon, the bar and the state label share the state's color (Figma S2).</summary>
+        private static void AssertRowColor(NeedRowView row, Color expected)
+        {
+            Assert.AreEqual(expected, row.IconColor, "Icon color.");
+            Assert.AreEqual(expected, row.BarColor, "Bar color.");
+            Assert.AreEqual(expected, row.StateColor, "State label color.");
+        }
 
         [UnitySetUp]
         public IEnumerator LoadGameScene()
@@ -342,18 +351,49 @@ namespace ResortEmpire.Tests
                 NeedRowView food = _ui.Needs.Rows[2];
                 Assert.AreEqual(NeedState.Bottleneck, Game.GetNeedState(NeedId.Food));
                 Assert.AreEqual("Queue growing!", food.StateText);
-                Assert.AreEqual(GreyboxPalette.Warning, food.StateColor);
+                AssertRowColor(food, GreyboxPalette.NeedBottleneck);
                 Assert.AreEqual("OK", _ui.Needs.Rows[0].StateText, "The Reception keeps up.");
+                AssertRowColor(_ui.Needs.Rows[0], GreyboxPalette.NeedInProgress);
 
                 Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant);
                 yield return null;
 
                 Assert.AreEqual("Catching up", food.StateText, "Catching up in the same moment as the move.");
-                Assert.AreEqual(GreyboxPalette.WorkerOn, food.StateColor);
+                AssertRowColor(food, GreyboxPalette.NeedGood);
             }
             finally
             {
                 Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator NeedIcons_TheForecastShowsEachNeedsIconInOneCalmColor()
+        {
+            yield return null;
+
+            var needs = new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
+            for (int i = 0; i < needs.Length; i++)
+            {
+                Image icon = _ui.Hud.GetForecastIcon(i);
+                Assert.IsTrue(icon.enabled, $"{needs[i]} has an icon.");
+                Assert.AreEqual($"Icon_Need_{needs[i]}", icon.sprite.name);
+                Assert.AreEqual(GreyboxPalette.Ink, icon.color, "Before the wave nothing is going well or badly yet.");
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator NeedIcons_TheNeedsPanelShowsEachNeedsIcon()
+        {
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 1);
+            yield return null;
+
+            var needs = new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
+            for (int i = 0; i < needs.Length; i++)
+            {
+                Assert.AreEqual($"Icon_Need_{needs[i]}", _ui.Needs.Rows[i].IconSprite.name);
+                AssertRowColor(_ui.Needs.Rows[i], GreyboxPalette.NeedInProgress);
             }
         }
 
@@ -399,6 +439,7 @@ namespace ResortEmpire.Tests
             Assert.AreEqual("Rooms  8/8", _ui.Needs.Rows[0].ProgressText);
             Assert.AreEqual("Food  6/6", _ui.Needs.Rows[2].ProgressText);
             Assert.AreEqual("All served", _ui.Needs.Rows[2].StateText);
+            AssertRowColor(_ui.Needs.Rows[2], GreyboxPalette.NeedGood);
 
             guests.FastForward(180f);
             yield return null;

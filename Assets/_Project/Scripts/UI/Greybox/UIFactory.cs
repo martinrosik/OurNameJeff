@@ -1,4 +1,5 @@
 using System;
+using ResortEmpire.Core;
 using ResortEmpire.Game;
 using TMPro;
 using UnityEngine;
@@ -16,11 +17,29 @@ namespace ResortEmpire.UI
 
         private static Sprite _rounded;
         private static Sprite _star;
+        private static Sprite _roomsIcon;
+        private static Sprite _drinksIcon;
+        private static Sprite _foodIcon;
 
-        public static void Init(Sprite rounded, Sprite star)
+        public static void Init(Sprite rounded, Sprite star, Sprite roomsIcon, Sprite drinksIcon, Sprite foodIcon)
         {
             _rounded = rounded;
             _star = star;
+            _roomsIcon = roomsIcon;
+            _drinksIcon = drinksIcon;
+            _foodIcon = foodIcon;
+        }
+
+        /// <summary>A need's white Figma icon, tinted by the panels, or null for a need that has no icon yet.</summary>
+        public static Sprite GetNeedIcon(NeedId need)
+        {
+            switch (need)
+            {
+                case NeedId.Rooms: return _roomsIcon;
+                case NeedId.Drinks: return _drinksIcon;
+                case NeedId.Food: return _foodIcon;
+                default: return null;
+            }
         }
 
         public static RectTransform Rect(string name, Transform parent)
@@ -69,11 +88,14 @@ namespace ResortEmpire.UI
         }
 
         /// <summary>Wave evaluation: a five-pointed star tinted <paramref name="color"/> (the white placeholder star sprite).</summary>
-        public static Image Star(string name, Transform parent, Color color)
+        public static Image Star(string name, Transform parent, Color color) => Icon(name, parent, _star, color);
+
+        /// <summary>A white sprite tinted <paramref name="color"/>, keeping its shape (stars, need icons).</summary>
+        public static Image Icon(string name, Transform parent, Sprite sprite, Color color)
         {
             RectTransform rect = Rect(name, parent);
             var image = rect.gameObject.AddComponent<Image>();
-            image.sprite = _star;
+            image.sprite = sprite;
             image.color = color;
             image.preserveAspect = true;
             image.raycastTarget = false;

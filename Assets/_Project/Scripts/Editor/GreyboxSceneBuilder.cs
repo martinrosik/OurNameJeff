@@ -22,6 +22,7 @@ namespace ResortEmpire.Editor
         private const string GameScenePath = "Assets/_Project/Scenes/Game.unity";
         private const string KenneyCity = "Assets/_Project/Art/Kenney/City/";
         private const string KenneyPirate = "Assets/_Project/Art/Kenney/Pirate/";
+        private const string NeedIcons = "Assets/_Project/Art/Icons/";
 
         // Island centre sits left of the screen centre: the side panel covers the right ~35 %.
         private static readonly Vector3 IslandCentre = new Vector3(-3.6f, -0.2f, 0f);
@@ -87,6 +88,9 @@ namespace ResortEmpire.Editor
             SetReference(ui, "controller", controller);
             SetReference(ui, "roundedSprite", GreyboxArtGenerator.Rounded);
             SetReference(ui, "starSprite", GreyboxArtGenerator.Star);
+            SetReference(ui, "roomsIcon", LoadNeedIcon(NeedId.Rooms));
+            SetReference(ui, "drinksIcon", LoadNeedIcon(NeedId.Drinks));
+            SetReference(ui, "foodIcon", LoadNeedIcon(NeedId.Food));
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -301,6 +305,15 @@ namespace ResortEmpire.Editor
                 case BuildingId.Bungalows: return new Vector3(-2.0f, -1.9f, 0f);
                 default: return Vector3.zero;
             }
+        }
+
+        /// <summary>A need's icon for the side panels, named like <c>Icon_Need_Food.png</c> (see CONTRIBUTING asset naming).</summary>
+        private static Sprite LoadNeedIcon(NeedId need)
+        {
+            string path = $"{NeedIcons}Icon_Need_{need}.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null) Debug.LogWarning($"Missing sprite {path}");
+            return sprite;
         }
 
         /// <summary>A sprite from an asset path, scaled to <paramref name="width"/> world units.</summary>

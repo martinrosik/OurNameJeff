@@ -1,5 +1,6 @@
 using System;
 using ResortEmpire.Core;
+using UnityEngine;
 
 namespace ResortEmpire.Game
 {
@@ -72,8 +73,12 @@ namespace ResortEmpire.Game
         public static string WaveArrivals(WaveSimulation wave) =>
             wave.ArrivalsClosed ? "All guests arrived" : "Guests arriving...";
 
-        public static string NeedProgress(ResortGame game, NeedStatus status) =>
-            $"{Need(game, status.Need)}  {status.Served}/{status.Total}";
+        /// <summary>"Food  2/6", with the served count tinted by how the need is going.</summary>
+        public static string NeedProgress(ResortGame game, NeedStatus status, Color countColor) =>
+            $"{Need(game, status.Need)}  {Colored($"{status.Served}/{status.Total}", countColor)}";
+
+        /// <summary>Rich text in one color, e.g. the red "Restaurant: No Worker" on the forecast.</summary>
+        public static string Colored(string text, Color color) => $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>";
 
         public static string NeedStateLabel(NeedState state, bool isPremium)
         {
