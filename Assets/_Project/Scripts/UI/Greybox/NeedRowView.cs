@@ -56,7 +56,6 @@ namespace ResortEmpire.UI
 
         public Button Button { get; }
         public bool IsVisible => _background.gameObject.activeSelf;
-        public Vector2 Position => _background.rectTransform.anchoredPosition;
         public string ProgressText => _progress.text;
         public string StaffingText => _staffing.text;
         public string StateText => _state.text;

@@ -25,8 +25,6 @@ namespace ResortEmpire.Core
         [Tooltip("Level 1 first. capacity = guests served AT THE SAME TIME. Prototype: 3 → 5 → 7 seats (upgrades come later).")]
         public List<BuildingLevel> levels = new List<BuildingLevel>();
 
-        public int MaxLevel => levels.Count;
-
         /// <summary>Level data, 1-based (level 1 = <c>levels[0]</c>).</summary>
         public BuildingLevel GetLevel(int level) => levels[Mathf.Clamp(level, 1, levels.Count) - 1];
     }

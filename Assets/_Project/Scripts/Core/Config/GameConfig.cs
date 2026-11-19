@@ -54,8 +54,5 @@ namespace ResortEmpire.Core
 
             return null;
         }
-
-        /// <summary>Errors that make the config unusable. Empty list = valid.</summary>
-        public List<string> Validate() => GameConfigValidator.Validate(this);
     }
 }

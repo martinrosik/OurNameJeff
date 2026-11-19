@@ -59,9 +59,6 @@ namespace ResortEmpire.Game
 
         public BuildingId Building => building;
 
-        /// <summary>The building's art sprites (for later per-level art or highlights).</summary>
-        public IReadOnlyList<SpriteRenderer> Art => art;
-
         /// <summary>Seat squares currently shown (OUR-50).</summary>
         public int ShownSeats { get; private set; }
 

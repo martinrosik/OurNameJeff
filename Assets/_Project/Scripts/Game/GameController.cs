@@ -18,7 +18,6 @@ namespace ResortEmpire.Game
         [Tooltip("Speeds the simulation up for testing. 1 = real time.")]
         [SerializeField, Range(0f, 8f)] private float simulationSpeed = 1f;
 
-        public GameConfig Config => config;
         public ResortGame Game { get; private set; }
 
         public float SimulationSpeed

@@ -35,17 +35,5 @@ namespace ResortEmpire.Core
                 default: return 0;
             }
         }
-
-        public void SetDemand(NeedId need, int units)
-        {
-            switch (need)
-            {
-                case NeedId.Rooms: rooms = units; break;
-                case NeedId.Drinks: drinks = units; break;
-                case NeedId.Food: food = units; break;
-                case NeedId.Relax: relax = units; break;
-                case NeedId.OceanView: oceanView = units; break;
-            }
-        }
     }
 }
