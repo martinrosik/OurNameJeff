@@ -343,6 +343,29 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheNeedsPanelSaysFullOnlyWhenTheGuestsAreReallyInside()
+        {
+            GuestCrowdView guests = _island.Guests;
+            PauseService(); // nobody leaves a seat, so the Core's seats fill up
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 40); // Drinks at 11.25, 22.5 and 33.75 s: 3 seated in the Core
+            yield return null;
+
+            Assert.AreEqual(3, Game.GetNeedStatus(NeedId.Drinks).Seated, "The Core has the Beach Bar full ...");
+            Assert.AreEqual(0, guests.GetShownSeated(NeedId.Drinks), "... but the guests are still on their way.");
+            NeedRowView drinks = _ui.Needs.Rows[1];
+            Assert.AreEqual("0 waiting", drinks.QueueText, "No \"Full: 3/3 seats\" while nobody is there.");
+
+            // Once guests have walked in, the row follows the Beach Bar's seat squares, never the Core's seats.
+            guests.FastForward(30f);
+            yield return null;
+
+            int inside = _island.GetView(BuildingId.BeachBar).ShownSeated;
+            Assert.Greater(inside, 0, "Some guests sit in the Beach Bar now.");
+            Assert.AreEqual(inside == 3 ? "Full: 3/3 seats, 0 waiting" : "0 waiting", drinks.QueueText);
+        }
+
+        [UnityTest]
         public IEnumerator TheNeedsPanelSaysAllServedOnlyOnceTheLastGuestHasWalkedOut()
         {
             GuestCrowdView guests = _island.Guests;
@@ -399,9 +422,12 @@ namespace ResortEmpire.Tests
             Game.StartWave();
             Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer);
             yield return null;
+            _island.Guests.FastForward(60f); // the guests walk in; the panel counts seats the island shows taken
+            yield return null;
 
             NeedRowView rooms = _ui.Needs.Rows[0];
             NeedRowView food = _ui.Needs.Rows[2];
+            Assert.AreEqual(3, _island.GetView(BuildingId.Reception).ShownSeated, "Three guests sit in the Reception.");
             int roomsWaiting = Game.GetNeedStatus(NeedId.Rooms).Waiting;
             int foodWaiting = Game.GetNeedStatus(NeedId.Food).Waiting;
 

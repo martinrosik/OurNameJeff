@@ -56,11 +56,11 @@ namespace ResortEmpire.UI
         public string ArrivalsText => _arrivals.text;
         public IReadOnlyList<NeedRowView> Rows => _rows;
 
-        /// <param name="shownServed">
-        /// Served count per need as the island shows it (guests that walked out, <see cref="GuestCrowdView.GetShownServed"/>);
-        /// null uses the Core's count.
+        /// <param name="shownStatus">
+        /// A need's numbers as the island shows them (<see cref="GuestCrowdView.GetShownStatus"/>: seated = guests
+        /// inside, served = guests that walked out); null uses the Core's numbers.
         /// </param>
-        public void Refresh(ResortGame game, Func<NeedId, int> shownServed = null)
+        public void Refresh(ResortGame game, Func<NeedId, NeedStatus, NeedStatus> shownStatus = null)
         {
             bool isVisible = ShouldShow(game.Phase);
             _panel.SetActive(isVisible);
@@ -74,7 +74,7 @@ namespace ResortEmpire.UI
             int index = 0;
             foreach (NeedId need in wave.Needs)
             {
-                _rows[index].Show(game, need, shownServed);
+                _rows[index].Show(game, need, shownStatus);
                 index++;
             }
 

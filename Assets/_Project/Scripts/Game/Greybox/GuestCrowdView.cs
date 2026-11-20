@@ -118,6 +118,14 @@ namespace ResortEmpire.Game
             return Mathf.Min(b.Left, b.Status.Served);
         }
 
+        /// <summary>
+        /// A need's numbers as the island shows them, for the Wave Needs Panel: guests seated are the ones inside the
+        /// building (<see cref="GetShownSeated"/>), served are the ones that walked out again (<see cref="GetShownServed"/>).
+        /// Total, arrived and the queue stay the Core's (the queue dots show the Core's queue too).
+        /// </summary>
+        public NeedStatus GetShownStatus(NeedId need, NeedStatus core) =>
+            new NeedStatus(core.Need, core.Total, core.Arrived, core.Waiting, GetShownSeated(need), GetShownServed(need));
+
         /// <summary>Seat squares shown as taken: guests inside the building, up to its seats.</summary>
         public int GetShownSeated(NeedId need)
         {

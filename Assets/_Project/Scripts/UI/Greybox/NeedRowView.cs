@@ -79,17 +79,15 @@ namespace ResortEmpire.UI
         /// <summary>The filled part of the progress bar, from 0 to 1.</summary>
         public float BarFraction => _barFill.anchorMax.x;
 
-        /// <param name="shownServed">
-        /// Served count as the island shows it (a guest counts once it has walked out of the building); null uses the
-        /// Core's count, which is ahead of the walking guests.
+        /// <param name="shownStatus">
+        /// The need's numbers as the island shows them: seated = guests inside the building, served = guests that have
+        /// walked out. Null uses the Core's numbers, which run ahead of the walking guests (a unit sits down the moment
+        /// it arrives, while its guest is still on the way, so "Full: 3/3 seats" could flash with nobody there).
         /// </param>
-        public void Show(ResortGame game, NeedId need, Func<NeedId, int> shownServed = null)
+        public void Show(ResortGame game, NeedId need, Func<NeedId, NeedStatus, NeedStatus> shownStatus = null)
         {
             NeedStatus status = game.GetNeedStatus(need);
-            if (shownServed != null)
-            {
-                status = new NeedStatus(status.Need, status.Total, status.Arrived, status.Waiting, status.Seated, shownServed(need));
-            }
+            if (shownStatus != null) status = shownStatus(need, status);
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
             NeedState state = game.GetNeedState(need);
