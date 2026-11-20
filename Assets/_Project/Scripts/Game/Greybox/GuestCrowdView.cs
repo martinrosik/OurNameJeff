@@ -146,7 +146,21 @@ namespace ResortEmpire.Game
             }
         }
 
-        /// <summary>Runs the walking forward without waiting for frames (tests).</summary>
+        /// <summary>
+        /// Joins a wave that is already under way (the player is back from the tutorial): sends out every guest the Core
+        /// has released and walks them forward until they're where the frozen game says they are, inside a building
+        /// waiting to be served, or back on the boat. The Core doesn't move meanwhile, so nothing in the wave changes.
+        /// </summary>
+        internal void CatchUp(ResortGame game, IslandView island)
+        {
+            Refresh(game, island);
+            if (_nextGuest > 0) FastForward(CatchUpSeconds);
+        }
+
+        // Long enough for the last guest of a big wave to step off and walk through three buildings' service.
+        private const float CatchUpSeconds = 180f;
+
+        /// <summary>Runs the walking forward without waiting for frames (tests, and catching up after the tutorial).</summary>
         internal void FastForward(float seconds)
         {
             while (seconds > 0f)

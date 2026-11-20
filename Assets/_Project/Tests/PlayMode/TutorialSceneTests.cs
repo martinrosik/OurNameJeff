@@ -11,7 +11,7 @@ namespace ResortEmpire.Tests
 {
     /// <summary>
     /// The Tutorial scene: its practice wave, its bubbles, the pauses, and the way into the Game scene (START MY RESORT,
-    /// SKIP TUTORIAL), plus HOW TO PLAY on the island. Time is driven with Tick() so tests run fast. The device's
+    /// SKIP TUTORIAL). PLAY TUTORIAL AGAIN is tested with the settings (SettingsMenuTests). Time is driven with Tick() so tests run fast. The device's
     /// "tutorial done" flag is put back after each test.
     /// </summary>
     public class TutorialSceneTests
@@ -29,12 +29,14 @@ namespace ResortEmpire.Tests
         {
             _wasDone = TutorialProgress.IsDone;
             TutorialProgress.Reset();
+            ParkedGame.Clear(); // a first-time tutorial: no game of the player's waits
         }
 
         [TearDown]
         public void PutTheFlagBack()
         {
             Time.timeScale = 1f;
+            ParkedGame.Clear();
             if (_wasDone) TutorialProgress.MarkDone();
             else TutorialProgress.Reset();
         }
@@ -85,7 +87,7 @@ namespace ResortEmpire.Tests
             Assert.IsTrue(_tutorial.View.NextButton.gameObject.activeInHierarchy);
             Assert.IsTrue(_tutorial.View.SkipButton.gameObject.activeInHierarchy);
             Assert.IsTrue(_tutorial.View.BlocksGame, "Taps on the island wait until NEXT.");
-            Assert.IsFalse(_ui.Hud.HowToPlayButton.gameObject.activeInHierarchy, "No HOW TO PLAY inside the tutorial.");
+            Assert.IsFalse(_ui.Settings.GearButton.gameObject.activeInHierarchy, "No settings gear inside the tutorial: SKIP TUTORIAL takes that corner.");
         }
 
         [UnityTest]
@@ -204,38 +206,16 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
-        public IEnumerator HowToPlayIsOfferedOnTheIslandBeforeTheFirstWave()
+        public IEnumerator OutsideTheTutorialEveryBuildingOpens()
         {
             yield return SceneManager.LoadSceneAsync(GameScenes.Game, LoadSceneMode.Single);
             yield return null;
             yield return null;
             var ui = Object.FindAnyObjectByType<GreyboxUI>();
-            var controller = Object.FindAnyObjectByType<GameController>();
-            controller.SimulationSpeed = 0f;
+            Object.FindAnyObjectByType<GameController>().SimulationSpeed = 0f;
 
-            Assert.IsTrue(ui.Hud.HowToPlayButton.gameObject.activeInHierarchy);
             ui.OpenWorkerAllocation(BuildingId.Reception);
-            Assert.IsTrue(ui.Workers.IsOpen, "Outside the tutorial every building opens.");
-            ui.Workers.Close();
-
-            controller.Game.StartWave();
-            yield return null;
-            Assert.IsFalse(ui.Hud.HowToPlayButton.gameObject.activeInHierarchy, "Not during the wave.");
-        }
-
-        [UnityTest]
-        public IEnumerator HowToPlayOpensTheTutorial()
-        {
-            TutorialProgress.MarkDone();
-            yield return SceneManager.LoadSceneAsync(GameScenes.Game, LoadSceneMode.Single);
-            yield return null;
-            yield return null;
-
-            Object.FindAnyObjectByType<GreyboxUI>().Hud.HowToPlayButton.onClick.Invoke();
-            yield return WaitForScene(GameScenes.Tutorial);
-            yield return null;
-
-            Assert.IsNotNull(Object.FindAnyObjectByType<TutorialController>());
+            Assert.IsTrue(ui.Workers.IsOpen, "No tutorial limits in the Game scene.");
         }
     }
 }

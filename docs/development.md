@@ -27,6 +27,7 @@ The team splits the work by Jira ticket (OUR Sprint 2). Built so far:
 - **OUR-40** and the wave evaluation: Wave Complete with rating stars, Wave Satisfaction % and Guests served
 - **Wave difficulty**: every wave is harder than the one before it (`WaveProgression`)
 - **Tutorial**: a practice wave with speech bubbles in `Tutorial.unity`, then the real game (see [Tutorial](#tutorial))
+- **Settings**: a gear in the top-right corner with Sound ON/OFF and PLAY TUTORIAL AGAIN (see [Greybox](#greybox))
 
 **When working on a ticket, read its guide in [tasks/](tasks/README.md) first.** It holds the Build-doc rules,
 numbers, where the code goes and the tests to write. Each continuing ticket has a `// OUR-xx` hook in
@@ -87,6 +88,10 @@ setting goes into the settings class, `PrototypeConfigDefaults` and the asset.
 - `Scripts/UI/Greybox/*` is uGUI built from code at runtime: the `GreyboxUI` root plus plain view classes (`HudView`
   today). New screens follow the same pattern; `GreyboxUI.SideArea` is reserved for the needs panel (OUR-37).
   All of it is meant to be replaced by Figma-based prefabs in the art pass.
+- Settings: `SettingsView` puts a gear in the top bar's right corner (sprite from **Resort Empire → Greybox → Generate
+  Settings Icon**). Its menu has Sound ON/OFF and PLAY TUTORIAL AGAIN, and the wave waits (`Time.timeScale = 0`) while
+  it's open. `SoundSettings` (Game) keeps the sound choice in PlayerPrefs and applies it to `AudioListener.volume` at
+  startup, so sounds added later follow it with no extra code. The game has no sounds yet.
 - `Scripts/Editor/GreyboxSceneBuilder` (menu **Resort Empire → Greybox → Rebuild Greybox Scene**) regenerates the
   Game/Island/UI roots in `Game.unity`, then rebuilds `Tutorial.unity` from it. `GreyboxArtGenerator` makes the white
   placeholder sprites.
@@ -105,8 +110,14 @@ each step in a speech bubble with an arrow, and then opens the real game at wave
   `TutorialController`; **Resort Empire → Greybox → Rebuild Tutorial Scene** makes the copy again (Rebuild Greybox
   Scene does it too). Don't edit `Tutorial.unity` by hand; change `Game.unity` or the builder instead.
 - **When it runs.** A build opens the tutorial on its first launch (`FirstLaunchTutorial`) until the player finishes
-  or skips it; `TutorialProgress` remembers that in PlayerPrefs. **HOW TO PLAY** on the island replays it, but only
-  before the first wave, since there's no save yet. In the Editor, Play starts whichever scene is open, so open
+  or skips it; `TutorialProgress` remembers that in PlayerPrefs. **PLAY TUTORIAL AGAIN** in the settings replays it
+  at any time, also during a wave. The Tutorial scene hides the settings gear (`GreyboxUI.SettingsAvailable`): SKIP
+  TUTORIAL sits in that corner.
+- **Coming back.** Before the Tutorial scene opens, the player's game is parked in memory (`ParkedGame`), frozen like
+  the Build doc's WAVE_PAUSED: nothing progresses, nothing gets worse. The Game scene's `GameController` picks it up
+  again instead of starting a new game (`IsResumed`), and `GuestCrowdView.CatchUp` walks the guests who had arrived
+  straight back into their buildings. The tutorial's last button then says **BACK TO MY RESORT**. Nothing is saved to
+  disk yet (save/load is on the roadmap), so quitting the app still starts over. In the Editor, Play starts whichever scene is open, so open
   `Tutorial.unity` (**Resort Empire → Open Tutorial Scene**) to play it. **Resort Empire → Reset Tutorial Progress**
   forgets that it was played.
 - **Steps.** `TutorialScript` (Core) lists the steps and what each waits for: NEXT, a Worker move, Welcome Guests, a

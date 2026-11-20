@@ -183,11 +183,19 @@ namespace ResortEmpire.Game
 
         public static string WavesCompleted(ResortGame game) => $"{game.CompletedWaves}/{game.Config.waves.Count}";
 
-        // Tutorial: the button on the island that opens it, and its bubbles over the practice wave (Tutorial scene).
-        public const string HowToPlayLabel = "HOW TO PLAY";
+        // Settings: the menu behind the gear in the top-right corner.
+        public const string SettingsTitle = "Settings";
+        public const string SoundLabel = "Sound";
+        public const string SoundOnLabel = "ON";
+        public const string SoundOffLabel = "OFF";
+        public const string TutorialReplayLabel = "PLAY TUTORIAL AGAIN";
+        public const string TutorialReplayNote = "A short practice wave. Your resort waits just as you left it.";
+
+        // Tutorial: its bubbles over the practice wave (Tutorial scene).
         public const string TutorialNextLabel = "NEXT";
         public const string TutorialSkipLabel = "SKIP TUTORIAL";
         public const string TutorialFinishLabel = "START MY RESORT";
+        public const string TutorialBackLabel = "BACK TO MY RESORT"; // a replay from the settings
 
         public const string TutorialWelcomeTitle = "Welcome to Paradise!";
         public const string TutorialWelcome =
@@ -250,5 +258,8 @@ namespace ResortEmpire.Game
         public const string TutorialResultTitle = "Wave complete!";
         public const string TutorialResult =
             "Quick service makes happy guests and more stars. That was a practice wave: your first real guests are next!";
+
+        public const string TutorialResultReplay =
+            "Quick service makes happy guests and more stars. That was a practice wave: your resort is waiting just as you left it.";
     }
 }

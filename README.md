@@ -70,7 +70,8 @@ Sprint "OUR Sprint 2" is split across the team. This part is built:
 | OUR-45 | Moving Workers before and during the wave: tap a building or a need |
 | OUR-40 + wave evaluation | Wave Complete: rating stars (PERFECT! for a Perfect wave), Wave Satisfaction %, Guests served, Continue. After wave 8, Play Again |
 | Wave difficulty | Every wave is harder than the one before it: 22, 38, 48, 55, 60, 75, 86, 94 need units. Waves 4 and 7 (whose Pool/Bungalows can't be built yet) grow 12.5 % over the wave before them |
-| Tutorial | `Tutorial.unity`: a practice wave with speech bubbles and arrows (buildings, Workers, forecast, moving a Worker, the needs panel, fixing a building that falls behind, the stars), then **START MY RESORT** opens the real wave 1. A build opens it on first launch; **HOW TO PLAY** replays it before the first wave; **SKIP TUTORIAL** any time |
+| Tutorial | `Tutorial.unity`: a practice wave with speech bubbles and arrows (buildings, Workers, forecast, moving a Worker, the needs panel, fixing a building that falls behind, the stars), then **START MY RESORT** opens the real wave 1. A build opens it on first launch; **PLAY TUTORIAL AGAIN** in the settings replays it at any time, and **BACK TO MY RESORT** returns to the game exactly as it was left, mid-wave too; **SKIP TUTORIAL** any time |
+| Settings | A gear in the top-right corner opens a small menu: **Sound** ON/OFF (the device remembers it) and **PLAY TUTORIAL AGAIN**. The wave waits while the menu is open |
 
 Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). A whole wave plays: guests arrive,
 buildings serve them, you move Workers, and Wave Complete shows how it went. Each ticket has a guide in

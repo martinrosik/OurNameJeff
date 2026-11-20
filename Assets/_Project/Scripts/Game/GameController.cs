@@ -7,7 +7,8 @@ namespace ResortEmpire.Game
 {
     /// <summary>
     /// Runs the Core game in the scene: creates the <see cref="ResortGame"/> from the config and ticks it every
-    /// frame. Views and UI read <see cref="Game"/>; they never change rules themselves.
+    /// frame. Views and UI read <see cref="Game"/>; they never change rules themselves. In the Game scene it first
+    /// picks up a game the player left for the tutorial (<see cref="ParkedGame"/>), if there is one.
     /// Pausing when the app goes to the background (WAVE_PAUSED) comes in a later sprint (docs/tasks/later.md).
     /// </summary>
     [DefaultExecutionOrder(-100)]
@@ -25,6 +26,12 @@ namespace ResortEmpire.Game
             get => simulationSpeed;
             set => simulationSpeed = Mathf.Clamp(value, 0f, 8f);
         }
+
+        /// <summary>
+        /// True when this scene picked up the game the player left for the tutorial (<see cref="ParkedGame"/>) instead of
+        /// starting a new one. It may be in the middle of a wave.
+        /// </summary>
+        public bool IsResumed { get; private set; }
 
         /// <summary>Raised when a new game replaces the current one.</summary>
         public event Action<ResortGame> GameCreated;
@@ -48,6 +55,16 @@ namespace ResortEmpire.Game
             }
 
             Application.targetFrameRate = 60;
+
+            // Back from the tutorial: the player carries on with the game they left, not a new one.
+            ResortGame parked = gameObject.scene.name == GameScenes.Game ? ParkedGame.Take() : null;
+            if (parked != null)
+            {
+                Game = parked;
+                IsResumed = true;
+                return;
+            }
+
             NewGame();
         }
 
@@ -60,6 +77,7 @@ namespace ResortEmpire.Game
         public void NewGame()
         {
             Game = new ResortGame(config);
+            IsResumed = false;
             GameCreated?.Invoke(Game);
         }
 
