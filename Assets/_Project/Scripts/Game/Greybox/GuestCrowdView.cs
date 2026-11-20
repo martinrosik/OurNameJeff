@@ -71,6 +71,7 @@ namespace ResortEmpire.Game
         private WaveSimulation _wave;
         private GuestPlan _plan;
         private int _nextGuest;
+        private bool _replannedForMiniEvent;
         private float _nextSpawnDelay;
 
         /// <summary>The current wave's guests and the buildings each one visits.</summary>
@@ -137,6 +138,14 @@ namespace ResortEmpire.Game
                 building.Status = game.GetNeedStatus(runtime.Need);
                 building.ServiceSeconds = (float)game.GetServiceSeconds(runtime.Id);
                 building.Seats = runtime.Seats;
+            }
+
+            // Mini-event: the rushed guests come earlier than planned, so the guests not yet off the boat are shared
+            // out again by the new arrival times; the rush then shows as guests hurrying from the boat to that building.
+            if (_wave.MiniEvent != null && !_replannedForMiniEvent)
+            {
+                _plan = _plan.Replan(_wave, _nextGuest);
+                _replannedForMiniEvent = true;
             }
 
             while (_nextGuest < _plan.Guests.Count && IsReleased(_plan.Guests[_nextGuest].Visits[0]))
@@ -424,6 +433,7 @@ namespace ResortEmpire.Game
             _plan = null;
             _nextGuest = 0;
             _nextSpawnDelay = 0f;
+            _replannedForMiniEvent = false;
         }
 
         /// <summary>Where one building's door is (relative to the building).</summary>

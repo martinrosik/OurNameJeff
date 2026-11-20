@@ -23,10 +23,16 @@ namespace ResortEmpire.Core
         private readonly BuildingRuntime[] _buildings;
         private readonly List<BuildingRuntime> _buildingList = new List<BuildingRuntime>();
         private double _incomingRemaining;
+        private readonly Random _random;
 
-        public ResortGame(GameConfig config)
+        /// <param name="random">
+        /// Mini-event: picks its moment in each wave. Null: waves have no mini-event (tests that need steady arrivals).
+        /// The game passes one (<c>GameController</c>).
+        /// </param>
+        public ResortGame(GameConfig config, Random random = null)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config));
+            _random = random;
 
             _buildings = new BuildingRuntime[BuildingCount];
             foreach (BuildingDefinition definition in config.buildings)
@@ -86,6 +92,9 @@ namespace ResortEmpire.Core
 
         /// <summary>OUR-38 / OUR-39: a need (and its building) changed state during the wave: need, from, to.</summary>
         public event Action<NeedId, NeedState, NeedState> NeedStateChanged;
+
+        /// <summary>Mini-event: the least busy building got a rush of its own guests.</summary>
+        public event Action<MiniEvent> MiniEventStarted;
 
         /// <summary>OUR-45: a Worker moved from the first building to the second.</summary>
         public event Action<BuildingId, BuildingId> WorkerMoved;
@@ -192,8 +201,10 @@ namespace ResortEmpire.Core
                 Config.wave.waveTimer,
                 need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0,
                 GetServiceSpeed,
-                Config.wave);
+                Config.wave,
+                _random);
             CurrentWave.StateChanged += (need, from, to) => NeedStateChanged?.Invoke(need, from, to);
+            CurrentWave.MiniEventStarted += miniEvent => MiniEventStarted?.Invoke(miniEvent);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;

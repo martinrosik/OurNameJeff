@@ -24,6 +24,11 @@ namespace ResortEmpire.Editor
                 waveTimer = 90f, // OUR-34: arrival phase (Build doc §4.8 wave_timer)
                 bottleneckThreshold = 4, // OUR-38: Build doc §4.8 bottleneck_threshold
                 bottleneckHysteresis = 3f, // OUR-38 / OUR-39: Build doc §4.8 bottleneck_hysteresis_s
+                miniEventEnabled = true, // Mini-event: a rush of a building's own guests at the least busy building
+                miniEventEarliest = 30f,
+                miniEventLatest = 60f,
+                miniEventUnits = 6, // Build doc §4.8 rush_units
+                miniEventDuration = 10f, // Build doc §4.8 rush_duration_s
                 serviceTime = 12f, // OUR-46: Build doc §4.8 service_time, 12 s per guest per seat (design-conflicts row 10)
                 utilizationStaffed = 1f, // OUR-46
                 utilizationEmpty = 0.33f, // OUR-47: 12 s ÷ 0.33 ≈ 36 s per guest without a Worker

@@ -28,6 +28,13 @@ namespace ResortEmpire.Core
     /// result.
     /// </para>
     /// <para>
+    /// <b>Mini-event:</b> once per wave, at a random wave time between <see cref="WaveSettings.miniEventEarliest"/> and
+    /// <see cref="WaveSettings.miniEventLatest"/>, the least busy building (fewest guests seated and waiting per seat)
+    /// gets a rush: its next <see cref="WaveSettings.miniEventUnits"/> guests, who were going to come later anyway,
+    /// arrive within <see cref="WaveSettings.miniEventDuration"/> seconds instead. Nobody new comes, so every need's
+    /// total stays the same (<see cref="MiniEvent"/>). Only when the wave gets a random source.
+    /// </para>
+    /// <para>
     /// <b>OUR-38 / OUR-39 need states:</b> each need has a <see cref="NeedState"/> (Build doc §4.4). States are
     /// checked at every event and every <see cref="StateCheckInterval"/> s of wave time (a fixed grid, never at
     /// frame times), so they don't depend on the frame rate either, and right after a Worker move
@@ -49,6 +56,8 @@ namespace ResortEmpire.Core
         private readonly double _bottleneckHysteresis;
         private double _nextStateCheck;
         private double _lastStateCheck;
+        private readonly int _miniEventUnits;
+        private readonly double _miniEventDuration;
 
         /// <param name="forecast">Demand for the needs on the island (already filtered by WR9).</param>
         /// <param name="waveTimer">Length of the arrival phase in seconds.</param>
@@ -58,15 +67,20 @@ namespace ResortEmpire.Core
         /// step. Null: nobody is served automatically (only <see cref="FinishService"/>).
         /// </param>
         /// <param name="settings">
-        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis. Null uses the Build doc defaults of
-        /// <see cref="WaveSettings"/>.
+        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis, and the mini-event settings. Null uses the Build doc
+        /// defaults of <see cref="WaveSettings"/>.
+        /// </param>
+        /// <param name="random">
+        /// Mini-event: picks its moment in the wave. Null (or <see cref="WaveSettings.miniEventEnabled"/> off): no
+        /// mini-event, every unit keeps its steady arrival time.
         /// </param>
         public WaveSimulation(
             WaveForecast forecast,
             double waveTimer,
             Func<NeedId, int> seatsForNeed,
             Func<NeedId, double> serviceSpeedForNeed = null,
-            WaveSettings settings = null)
+            WaveSettings settings = null,
+            Random random = null)
         {
             if (forecast == null) throw new ArgumentNullException(nameof(forecast));
             if (seatsForNeed == null) throw new ArgumentNullException(nameof(seatsForNeed));
@@ -77,6 +91,15 @@ namespace ResortEmpire.Core
             _bottleneckThreshold = Math.Max(1, settings.bottleneckThreshold);
             _bottleneckHysteresis = Math.Max(TimeEpsilon, settings.bottleneckHysteresis);
             _nextStateCheck = StateCheckInterval;
+            _miniEventUnits = Math.Max(1, settings.miniEventUnits);
+            _miniEventDuration = Math.Max(TimeEpsilon, settings.miniEventDuration);
+            ScheduledMiniEventTime = double.PositiveInfinity;
+            if (settings.miniEventEnabled && random != null)
+            {
+                double earliest = Math.Max(0, settings.miniEventEarliest);
+                double latest = Math.Max(earliest, settings.miniEventLatest);
+                ScheduledMiniEventTime = earliest + random.NextDouble() * (latest - earliest);
+            }
             WaveIndex = forecast.WaveIndex;
             GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
@@ -92,6 +115,15 @@ namespace ResortEmpire.Core
 
         /// <summary>OUR-38 / OUR-39: a need changed state (need, from, to).</summary>
         public event Action<NeedId, NeedState, NeedState> StateChanged;
+
+        /// <summary>Mini-event: the rush started (at <see cref="MiniEvent.StartTime"/>).</summary>
+        public event Action<MiniEvent> MiniEventStarted;
+
+        /// <summary>Mini-event: when it is due (infinity when this wave has none). Fixed when the wave is created.</summary>
+        public double ScheduledMiniEventTime { get; private set; }
+
+        /// <summary>Mini-event: the rush once it has started; null before, or when the wave has none.</summary>
+        public MiniEvent MiniEvent { get; private set; }
 
         /// <summary>
         /// OUR-38 / OUR-39: the need's state. <see cref="NeedState.Locked"/> for a need that isn't in this wave
@@ -241,7 +273,7 @@ namespace ResortEmpire.Core
             // 0.25 s grid of wave time.
             while (true)
             {
-                double next = Math.Min(waveTime, _nextStateCheck);
+                double next = Math.Min(Math.Min(waveTime, _nextStateCheck), ScheduledMiniEventTime);
                 foreach (NeedQueue need in _needList)
                 {
                     next = Math.Min(next, need.NextEventTime(Time));
@@ -253,6 +285,14 @@ namespace ResortEmpire.Core
                 bool any = false;
                 foreach (NeedQueue need in _needList) any |= need.ProcessDueEvents(Time);
 
+                // Mini-event: after this moment's arrivals and service ends, so "least busy" is judged on them.
+                if (Time >= ScheduledMiniEventTime - TimeEpsilon)
+                {
+                    ScheduledMiniEventTime = double.PositiveInfinity;
+                    StartMiniEvent();
+                    any = true;
+                }
+
                 bool gridCheck = Time >= _nextStateCheck - TimeEpsilon;
                 if (gridCheck) _nextStateCheck += StateCheckInterval;
                 if (any || gridCheck) CheckStates();
@@ -261,6 +301,46 @@ namespace ResortEmpire.Core
             }
 
             Time = waveTime;
+        }
+
+        /// <summary>
+        /// Mini-event: picks the least busy building that still has guests to come, and moves its next guests'
+        /// arrivals forward into the next <see cref="WaveSettings.miniEventDuration"/> seconds. No unit is added.
+        /// </summary>
+        private void StartMiniEvent()
+        {
+            NeedQueue target = null;
+            double targetLoad = double.MaxValue;
+            foreach (NeedQueue need in _needList)
+            {
+                int toCome = need.Total - need.Arrived;
+                if (toCome <= 0) continue;
+
+                // Least busy: fewest guests seated and waiting per seat. Ties: the one with more guests still to
+                // come, so the rush is as big as it can be.
+                double load = (need.Seated + need.Waiting.Count) / (double)Math.Max(1, need.Seats);
+                if (target == null || load < targetLoad - TimeEpsilon ||
+                    (Math.Abs(load - targetLoad) <= TimeEpsilon && toCome > target.Total - target.Arrived))
+                {
+                    target = need;
+                    targetLoad = load;
+                }
+            }
+
+            if (target == null) return;
+
+            int units = Math.Min(_miniEventUnits, target.Total - target.Arrived);
+            for (int i = 0; i < units; i++)
+            {
+                // Evenly over the rush, but never later than the guest was going to come anyway; the times stay in
+                // order because both the old and the new ones grow with i.
+                int k = target.Arrived + i;
+                double rushed = Time + (i + 1) * _miniEventDuration / units;
+                target.ArrivalTimes[k] = Math.Min(target.ArrivalTimes[k], rushed);
+            }
+
+            MiniEvent = new MiniEvent(target.Need, Time, units, _miniEventDuration);
+            MiniEventStarted?.Invoke(MiniEvent);
         }
 
         private void ReadSpeeds()

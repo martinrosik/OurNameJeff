@@ -22,6 +22,7 @@ namespace ResortEmpire.Tests
         private IslandView _island;
 
         private float _savedServiceTime;
+        private bool _savedMiniEvent;
 
         private ResortGame Game => _controller.Game;
 
@@ -54,12 +55,19 @@ namespace ResortEmpire.Tests
             Assert.IsNotNull(_island, "Game scene has no IslandView.");
             _controller.SimulationSpeed = 0f; // tests drive time themselves
             _savedServiceTime = Game.Config.wave.serviceTime;
+
+            // The mini-event comes at a random moment; tests that count arrivals need steady ones. The test for the
+            // mini-event turns it back on. The config is the real asset, so TearDown restores the value.
+            _savedMiniEvent = Game.Config.wave.miniEventEnabled;
+            Game.Config.wave.miniEventEnabled = false;
         }
 
         [TearDown]
         public void RestoreServiceTime()
         {
-            if (_controller != null) _controller.Game.Config.wave.serviceTime = _savedServiceTime;
+            if (_controller == null) return;
+            _controller.Game.Config.wave.serviceTime = _savedServiceTime;
+            _controller.Game.Config.wave.miniEventEnabled = _savedMiniEvent;
         }
 
         [UnityTest]
@@ -810,6 +818,35 @@ namespace ResortEmpire.Tests
             Assert.IsFalse(_ui.WaveComplete.IsVisible);
             Assert.IsTrue(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Welcome Guests is back.");
             Assert.IsFalse(Game.GetBuilding(BuildingId.Restaurant).HasWorker, "Workers start where the config puts them.");
+        }
+
+        [UnityTest]
+        public IEnumerator MiniEvent_TheLeastBusyBuildingGetsARushOfItsOwnGuests()
+        {
+            Game.Config.wave.miniEventEnabled = true;
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+            int totalUnits = Game.CurrentWave.TotalUnits;
+            double due = Game.CurrentWave.ScheduledMiniEventTime;
+            Assert.That(due, Is.InRange(30.0, 60.0), "Once per wave, at a random moment between 30 and 60 s.");
+
+            while (Game.CurrentWave.MiniEvent == null && Game.WaveTime < 61) Game.Tick(0.25);
+            yield return null;
+
+            MiniEvent miniEvent = Game.CurrentWave.MiniEvent;
+            Assert.IsNotNull(miniEvent);
+            BuildingId building = Game.Config.GetBuildingForNeed(miniEvent.Need).building;
+            Assert.IsTrue(_ui.StateToast.IsVisible);
+            Assert.AreEqual($"Rush at the {Game.Config.GetBuilding(building).displayName}!", _ui.StateToast.Title);
+            Assert.AreEqual(totalUnits, Game.CurrentWave.TotalUnits, "Nobody new comes.");
+
+            // Guests the steady schedule would have brought by the start, plus the rushed ones, all here 10 s later.
+            int total = Game.CurrentWave.GetTotal(miniEvent.Need);
+            int steadyByStart = (int)System.Math.Floor(miniEvent.StartTime * total / Game.Config.wave.waveTimer + 1e-9);
+            for (int i = 0; i < 11; i++) Game.Tick(1);
+            Assert.GreaterOrEqual(Game.GetNeedStatus(miniEvent.Need).Arrived, steadyByStart + miniEvent.Units,
+                "The rushed guests arrive within the rush's 10 s.");
+            Assert.AreEqual(total, Game.GetNeedStatus(miniEvent.Need).Total, "The building's demand stays the same.");
         }
     }
 }

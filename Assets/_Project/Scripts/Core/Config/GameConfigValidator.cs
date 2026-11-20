@@ -22,6 +22,14 @@ namespace ResortEmpire.Core
             else
             {
                 if (config.wave.waveTimer < 1f) errors.Add($"Wave timer must be at least 1 s (is {config.wave.waveTimer}).");
+                if (config.wave.miniEventEnabled)
+                {
+                    if (config.wave.miniEventEarliest > config.wave.miniEventLatest) errors.Add($"Mini-event: miniEventEarliest ({config.wave.miniEventEarliest}) must not be after miniEventLatest ({config.wave.miniEventLatest}).");
+                    if (config.wave.miniEventLatest >= config.wave.waveTimer) errors.Add($"Mini-event: miniEventLatest ({config.wave.miniEventLatest}) must be before waveTimer ({config.wave.waveTimer}), while guests are still on their way.");
+                    if (config.wave.miniEventUnits < 1) errors.Add($"Mini-event: miniEventUnits must be at least 1 (is {config.wave.miniEventUnits}).");
+                    if (config.wave.miniEventDuration <= 0f) errors.Add($"Mini-event: miniEventDuration must be above 0 s (is {config.wave.miniEventDuration}).");
+                }
+
                 if (config.wave.bottleneckThreshold < 1) errors.Add($"bottleneckThreshold must be at least 1 (is {config.wave.bottleneckThreshold}).");
                 if (config.wave.bottleneckHysteresis <= 0f) errors.Add($"bottleneckHysteresis must be above 0 s (is {config.wave.bottleneckHysteresis}).");
                 if (config.wave.serviceTime <= 0f) errors.Add($"Service time must be above 0 s (is {config.wave.serviceTime}).");

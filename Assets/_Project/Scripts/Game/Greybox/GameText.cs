@@ -23,6 +23,13 @@ namespace ResortEmpire.Game
         /// <summary>OUR-38: a guest's feedback on a bottleneck, e.g. "Drinks takes a bit too long."</summary>
         public static string GuestComplaint(ResortGame game, NeedId need) => $"\"{Need(game, need)} takes a bit too long.\"";
 
+        /// <summary>Mini-event: "Rush at the Beach Bar!".</summary>
+        public static string MiniEventTitle(ResortGame game, BuildingId building) => $"Rush at the {Building(game, building)}!";
+
+        /// <summary>Mini-event: how many of the building's guests come at once, e.g. "6 guests want Drinks right now."</summary>
+        public static string MiniEventDetail(ResortGame game, MiniEvent miniEvent) =>
+            $"{miniEvent.Units} guests want {Need(game, miniEvent.Need)} right now.";
+
         /// <summary>OUR-39: "Beach Bar is catching up".</summary>
         public static string CatchingUp(ResortGame game, BuildingId building) => $"{Building(game, building)} is catching up";
 

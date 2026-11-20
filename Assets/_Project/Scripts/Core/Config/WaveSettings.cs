@@ -39,6 +39,21 @@ namespace ResortEmpire.Core
         [Tooltip("Wave difficulty: every wave is harder than the one before it. When the wave table's next wave isn't bigger in total for the needs on the island (waves 4 and 7 debut needs whose buildings aren't built), the previous wave's demand and guests grow by this share instead, rounded up (0.125 = +12.5 %). Kept below the table's ~25 % growth, so the waves after it keep their table numbers.")]
         [Min(0.01f)] public float growthIfNotHarder = 0.125f;
 
+        [Tooltip("Mini-event: once per wave, at a random moment, the least busy building gets a rush of the guests that were going to come to it anyway (no new guests). Off in the tutorial.")]
+        public bool miniEventEnabled = true;
+
+        [Tooltip("Mini-event: earliest wave time it can start, in seconds (TUNING).")]
+        [Min(0f)] public float miniEventEarliest = 30f;
+
+        [Tooltip("Mini-event: latest wave time it can start, in seconds. Before waveTimer, so guests are still on their way (TUNING).")]
+        [Min(0f)] public float miniEventLatest = 60f;
+
+        [Tooltip("Mini-event: how many of the building's next guests come early (Build doc rush_units: 6). Fewer if fewer are still to come.")]
+        [Min(1)] public int miniEventUnits = 6;
+
+        [Tooltip("Mini-event: seconds over which those guests arrive (Build doc rush_duration_s: 10).")]
+        [Min(0.1f)] public float miniEventDuration = 10f;
+
         /// <summary>Seconds one seat takes to serve one guest, with or without a Worker.</summary>
         public double GetServiceSeconds(bool hasWorker) => serviceTime / (double)(hasWorker ? utilizationStaffed : utilizationEmpty);
     }

@@ -25,18 +25,51 @@ namespace ResortEmpire.Core
         public static GuestPlan Build(WaveSimulation wave)
         {
             if (wave == null) throw new ArgumentNullException(nameof(wave));
+            return new GuestPlan(Plan(wave, new HashSet<(NeedId, int)>(), wave.GuestCount));
+        }
 
+        /// <summary>
+        /// Mini-event: keeps the first <paramref name="keepFirst"/> guests (already on the island) as they are, and
+        /// shares out every other unit again by its current arrival time. The guests that come early in the rush then
+        /// step off the boat early too. Counts per need stay the same.
+        /// </summary>
+        public GuestPlan Replan(WaveSimulation wave, int keepFirst)
+        {
+            if (wave == null) throw new ArgumentNullException(nameof(wave));
+            keepFirst = Math.Max(0, Math.Min(keepFirst, _guests.Count));
+
+            var kept = new List<PlannedGuest>();
+            var taken = new HashSet<(NeedId, int)>();
+            for (int i = 0; i < keepFirst; i++)
+            {
+                kept.Add(_guests[i]);
+                foreach (GuestVisit visit in _guests[i].Visits) taken.Add((visit.Need, visit.Unit));
+            }
+
+            kept.AddRange(Plan(wave, taken, Math.Max(1, _guests.Count - keepFirst)));
+            return new GuestPlan(kept);
+        }
+
+        private static List<PlannedGuest> Plan(WaveSimulation wave, HashSet<(NeedId, int)> skip, int wantedGuests)
+        {
             var units = new List<GuestVisit>();
             int needCount = 0;
             foreach (NeedId need in wave.Needs)
             {
                 int total = wave.GetTotal(need);
-                if (total > 0) needCount++;
-                for (int k = 0; k < total; k++) units.Add(new GuestVisit(need, k, wave.GetArrivalTime(need, k)));
+                bool any = false;
+                for (int k = 0; k < total; k++)
+                {
+                    if (skip.Contains((need, k))) continue;
+                    units.Add(new GuestVisit(need, k, wave.GetArrivalTime(need, k)));
+                    any = true;
+                }
+
+                if (any) needCount++;
             }
 
             var guests = new List<PlannedGuest>();
-            if (units.Count == 0) return new GuestPlan(guests);
+            if (units.Count == 0) return guests;
 
             // Released order: by arrival time, ties in need order (Rooms before Drinks before Food …).
             units.Sort((a, b) =>
@@ -46,7 +79,7 @@ namespace ResortEmpire.Core
             });
 
             // At least enough guests that nobody needs the same thing twice, at most one per unit.
-            int guestCount = Math.Max(wave.GuestCount, (units.Count + needCount - 1) / needCount);
+            int guestCount = Math.Max(wantedGuests, (units.Count + needCount - 1) / needCount);
             guestCount = Math.Max(1, Math.Min(guestCount, units.Count));
             // Even shares: the first guests carry one unit more than the rest, so every one of the guestCount guests
             // gets a unit (one shared cap let the first guests take everything, e.g. 11 guests instead of 12 in wave 1).
@@ -91,7 +124,7 @@ namespace ResortEmpire.Core
                 target.Add(unit);
             }
 
-            return new GuestPlan(guests);
+            return guests;
         }
 
         /// <summary>Visits per need over all guests (equals the wave's demand).</summary>
