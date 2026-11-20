@@ -182,5 +182,73 @@ namespace ResortEmpire.Game
         public const string PlayAgainLabel = "PLAY AGAIN";
 
         public static string WavesCompleted(ResortGame game) => $"{game.CompletedWaves}/{game.Config.waves.Count}";
+
+        // Tutorial: the button on the island that opens it, and its bubbles over the practice wave (Tutorial scene).
+        public const string HowToPlayLabel = "HOW TO PLAY";
+        public const string TutorialNextLabel = "NEXT";
+        public const string TutorialSkipLabel = "SKIP TUTORIAL";
+        public const string TutorialFinishLabel = "START MY RESORT";
+
+        public const string TutorialWelcomeTitle = "Welcome to Paradise!";
+        public const string TutorialWelcome =
+            "Guests come to your island by boat, in waves. Keep them happy by sending your Workers where they're needed most.";
+
+        public const string TutorialBuildingsTitle = "Your buildings";
+
+        /// <summary>"Each building serves one need: Reception gives Rooms, ...". Names come from the config.</summary>
+        public static string TutorialBuildings(ResortGame game)
+        {
+            var services = new System.Collections.Generic.List<string>();
+            foreach (BuildingRuntime building in game.Buildings)
+            {
+                services.Add($"{building.Definition.displayName}: {Need(game, building.Need)}");
+            }
+
+            return $"Each building serves one need ({string.Join(", ", services)}). Every square is a seat for one guest.";
+        }
+
+        public const string TutorialWorkersTitle = "Workers";
+
+        /// <summary>How much slower a building is without a Worker, from the config (about 3 times in the prototype).</summary>
+        public static string TutorialWorkers(ResortGame game)
+        {
+            double times = game.Config.wave.utilizationStaffed / game.Config.wave.utilizationEmpty;
+            return $"A green {WorkerBadge} means a Worker is here, so the building serves at full speed. Without one, it's about {Math.Round(times)} times slower.";
+        }
+
+        public const string TutorialForecastTitle = "The forecast";
+        public const string TutorialForecast = "Before every wave you see what the guests will need. Plan your Workers before the boat arrives.";
+
+        public const string TutorialMoveWorkerTitle = "Move a Worker";
+
+        public static string TutorialMoveWorker(ResortGame game, BuildingId emptyBuilding) =>
+            $"You have {game.WorkerCount} Workers for {game.Buildings.Count} buildings. Try it: tap the {Building(game, emptyBuilding)} and take a Worker over. Moving is free and instant.";
+
+        public const string TutorialWelcomeGuestsTitle = "Ready?";
+        public const string TutorialWelcomeGuests = "Tap Welcome Guests to bring the boat in.";
+
+        public const string TutorialBoatArriving = "Here they come!";
+
+        public const string TutorialNeedsPanelTitle = "The needs panel";
+        public const string TutorialNeedsPanel =
+            "During the wave this panel shows every need: how many guests are served, and how many wait in line. The wave waits while you read.";
+
+        public const string TutorialWatchQueues = "Watch the buildings. A growing queue means a building needs help.";
+
+        public static string TutorialOverloadTitle(ResortGame game, BuildingId building) => $"The {Building(game, building)} can't keep up!";
+
+        public static string TutorialOverload(ResortGame game, BuildingId building) =>
+            $"It has no Worker. Tap the {Building(game, building)} and bring a Worker over. The wave waits for you.";
+
+        public const string TutorialCatchingUpTitle = "Nice move!";
+
+        public static string TutorialCatchingUp(ResortGame game, BuildingId building) =>
+            $"The {Building(game, building)} is catching up. You can move Workers during a wave too, whenever a queue grows.";
+
+        public const string TutorialFinishWave = "Now let the guests finish their stay. If another queue grows, move a Worker again.";
+
+        public const string TutorialResultTitle = "Wave complete!";
+        public const string TutorialResult =
+            "Quick service makes happy guests and more stars. That was a practice wave: your first real guests are next!";
     }
 }

@@ -16,6 +16,7 @@ namespace ResortEmpire.Editor
     /// dock, guest boat and the buildings from the config, with placeholder Kenney art and their Worker and
     /// capacity indicators, and the walking guests) and UI. Re-running it replaces those three roots, so local tweaks to them are lost.
     /// Move things by hand afterwards if you like; the code doesn't depend on positions.
+    /// It then rebuilds Tutorial.unity from the result (<see cref="TutorialSceneBuilder"/>).
     /// </summary>
     public static class GreyboxSceneBuilder
     {
@@ -95,6 +96,9 @@ namespace ResortEmpire.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("Greybox scene rebuilt.");
+
+            // The tutorial plays on a copy of this island; rebuild it so the two stay the same.
+            TutorialSceneBuilder.Build();
         }
 
         private static void BuildIsland(GameController controller, GameConfig config)

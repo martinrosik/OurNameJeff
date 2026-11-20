@@ -26,6 +26,7 @@ The team splits the work by Jira ticket (OUR Sprint 2). Built so far:
 - **OUR-45**: moving Workers
 - **OUR-40** and the wave evaluation: Wave Complete with rating stars, Wave Satisfaction % and Guests served
 - **Wave difficulty**: every wave is harder than the one before it (`WaveProgression`)
+- **Tutorial**: a practice wave with speech bubbles in `Tutorial.unity`, then the real game (see [Tutorial](#tutorial))
 
 **When working on a ticket, read its guide in [tasks/](tasks/README.md) first.** It holds the Build-doc rules,
 numbers, where the code goes and the tests to write. Each continuing ticket has a `// OUR-xx` hook in
@@ -87,12 +88,41 @@ setting goes into the settings class, `PrototypeConfigDefaults` and the asset.
   today). New screens follow the same pattern; `GreyboxUI.SideArea` is reserved for the needs panel (OUR-37).
   All of it is meant to be replaced by Figma-based prefabs in the art pass.
 - `Scripts/Editor/GreyboxSceneBuilder` (menu **Resort Empire → Greybox → Rebuild Greybox Scene**) regenerates the
-  Game/Island/UI roots in `Game.unity`. `GreyboxArtGenerator` makes the white placeholder sprites.
+  Game/Island/UI roots in `Game.unity`, then rebuilds `Tutorial.unity` from it. `GreyboxArtGenerator` makes the white
+  placeholder sprites.
 - Text uses only characters LiberationSans SDF has. No ★ ⚠ ⚡ or ellipsis glyphs.
 - Placeholder art: Kenney CC0 renders in `Art/Kenney/{City,Pirate}`, made with `Scripts/Editor/Art/ModelSpriteRenderer`
   (isometric 30°/45° orthographic bake, `ModelSpriteBake` shader, 3× supersampling, trimmed). To add more, import the
   model temporarily, call `ModelSpriteRenderer.Render(model, colormap, "Assets/_Project/Art/...png")`, set the PNG to
   Sprite (PPU 256), and delete the model again. Only PNGs go into the repo.
+
+## Tutorial
+
+Not in the design docs; the team added it to the sprint. It plays a short practice wave on the same island, explains
+each step in a speech bubble with an arrow, and then opens the real game at wave 1.
+
+- **Scenes.** `Game.unity` stays the first scene. `Tutorial.unity` is a copy of it plus a `Tutorial` root with
+  `TutorialController`; **Resort Empire → Greybox → Rebuild Tutorial Scene** makes the copy again (Rebuild Greybox
+  Scene does it too). Don't edit `Tutorial.unity` by hand; change `Game.unity` or the builder instead.
+- **When it runs.** A build opens the tutorial on its first launch (`FirstLaunchTutorial`) until the player finishes
+  or skips it; `TutorialProgress` remembers that in PlayerPrefs. **HOW TO PLAY** on the island replays it, but only
+  before the first wave, since there's no save yet. In the Editor, Play starts whichever scene is open, so open
+  `Tutorial.unity` (**Resort Empire → Open Tutorial Scene**) to play it. **Resort Empire → Reset Tutorial Progress**
+  forgets that it was played.
+- **Steps.** `TutorialScript` (Core) lists the steps and what each waits for: NEXT, a Worker move, Welcome Guests, a
+  building falling behind, the wave end. It follows the game, so starting the wave early skips ahead. The wave pauses
+  (`Time.timeScale = 0`) while a bubble explains something during it, and while it waits for the overload fix.
+- **One thing at a time.** While a step asks for a Worker move, only the building the bubble points at opens its
+  Worker sheet (`TutorialScript.AllowsWorkerSheet`, applied through `GreyboxUI.CanOpenWorkerSheet`); a tap on another
+  building shakes the bubble. Welcome Guests stays greyed until the first Worker move is done (`GreyboxUI.CanStartWave`).
+- **Practice wave.** `Assets/_Project/Data/Config_Tutorial.asset` (`TutorialConfig`, defaults in
+  `TutorialConfigDefaults`): 9 Rooms, 9 Drinks, 9 Food over 40 s, played with the prototype config's rules. Whichever
+  building has no Worker falls behind at about 36 s, and a Worker turns it to "catching up" at once.
+  `TutorialConfigTests` checks that for both config assets, so retuning either one can't quietly break the tutorial.
+- **Look.** `TutorialView` draws the bubble, the curved arrow, the pulsing frame and SKIP TUTORIAL on its own canvas
+  above the greybox UI. `TutorialLayout` places the bubble beside its target, clear of the other buildings and panels.
+  Bubble texts live in `GameText`. The arrow and frame sprites come from **Resort Empire → Greybox → Generate Tutorial
+  Sprites** (shapes in `TutorialArt`); the host is a baked guest character.
 
 ## Driving Unity from the command line
 

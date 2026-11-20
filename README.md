@@ -70,6 +70,7 @@ Sprint "OUR Sprint 2" is split across the team. This part is built:
 | OUR-45 | Moving Workers before and during the wave: tap a building or a need |
 | OUR-40 + wave evaluation | Wave Complete: rating stars (PERFECT! for a Perfect wave), Wave Satisfaction %, Guests served, Continue. After wave 8, Play Again |
 | Wave difficulty | Every wave is harder than the one before it: 22, 38, 48, 55, 60, 75, 86, 94 need units. Waves 4 and 7 (whose Pool/Bungalows can't be built yet) grow 12.5 % over the wave before them |
+| Tutorial | `Tutorial.unity`: a practice wave with speech bubbles and arrows (buildings, Workers, forecast, moving a Worker, the needs panel, fixing a building that falls behind, the stars), then **START MY RESORT** opens the real wave 1. A build opens it on first launch; **HOW TO PLAY** replays it before the first wave; **SKIP TUTORIAL** any time |
 
 Open `Game.unity` and press **Play** (Game view at **852×393** or **1704×786**). A whole wave plays: guests arrive,
 buildings serve them, you move Workers, and Wave Complete shows how it went. Each ticket has a guide in
@@ -82,7 +83,8 @@ from the dock to their building (13 ordinary people, walk cycle baked into `Art/
 **Resort Empire → Art → Render Selected Models To PNG** (`ModelSpriteRenderer`); only the PNGs and the license are
 in `Assets/_Project/Art/Kenney`. All of it gets replaced in the art pass.
 If you change the island layout code, **Resort Empire → Greybox → Rebuild Greybox Scene** regenerates the
-Game, Island and UI objects (manual edits to those three are lost).
+Game, Island and UI objects (manual edits to those three are lost) and then copies the island into `Tutorial.unity`.
+To play the tutorial in the Editor, open it with **Resort Empire → Open Tutorial Scene** and press **Play**.
 
 ## Project layout
 
@@ -93,7 +95,7 @@ Assets/
     Audio/      Music, SFX
     Data/       ScriptableObject configs (needs, buildings, wave table, tuning)
     Prefabs/
-    Scenes/     Game.unity
+    Scenes/     Game.unity, Tutorial.unity (a copy of Game.unity plus the tutorial)
     Scripts/
       Core/     ResortEmpire.Core: pure C# simulation (waves, needs, workers, economy), no MonoBehaviours
       Game/     ResortEmpire.Game: MonoBehaviours that run Core in the scene, state machine, save/load

@@ -14,6 +14,9 @@ namespace ResortEmpire.UI
     /// OUR-37: the Wave Needs Panel (<see cref="NeedsPanelView"/>) uses the side area to the right during the wave.
     /// OUR-38 / OUR-39: building state changes show a short message over the island (<see cref="StateToastView"/>).
     /// OUR-40: <see cref="WaveCompleteView"/> tells the player the wave is over.
+    /// Tutorial: S1 offers HOW TO PLAY before the first wave; in the Tutorial scene, TutorialController draws its
+    /// bubbles on a canvas of its own over this one, limits which buildings open and when Welcome Guests works, and
+    /// swaps Wave Complete's Continue for START MY RESORT.
     /// UI reads game state and sends player intents; it never changes rules.
     /// </summary>
     public sealed class GreyboxUI : MonoBehaviour
@@ -51,6 +54,30 @@ namespace ResortEmpire.UI
 
         /// <summary>The area over the island, for prompts and toasts.</summary>
         internal RectTransform IslandArea { get; private set; }
+
+        internal IslandView Island => _island;
+
+        /// <summary>Tutorial: whether S1 offers HOW TO PLAY (before the first wave). The Tutorial scene turns it off.</summary>
+        internal bool HowToPlayAvailable { get; set; } = true;
+
+        /// <summary>Tutorial: the label and action that replace Continue on Wave Complete (null: the normal Continue).</summary>
+        internal string ContinueLabelOverride { get; private set; }
+
+        /// <summary>
+        /// Tutorial: whether a tap (on the island or a needs-panel row) may open this building's Worker sheet. Null lets
+        /// every building open. The Tutorial scene lets only the building its bubble points at open.
+        /// </summary>
+        internal System.Func<BuildingId, bool> CanOpenWorkerSheet { get; set; }
+
+        /// <summary>Tutorial: raised when a tap asked for a Worker sheet that <see cref="CanOpenWorkerSheet"/> refused.</summary>
+        internal event System.Action<BuildingId> WorkerSheetRefused;
+
+        /// <summary>Tutorial: whether Welcome Guests may start the wave now. Null: whenever the game allows it.</summary>
+        internal System.Func<bool> CanStartWave { get; set; }
+
+        internal bool IsWaveStartAllowed => CanStartWave == null || CanStartWave();
+
+        private System.Action _continueOverride;
 
         private void Start()
         {
@@ -99,14 +126,40 @@ namespace ResortEmpire.UI
             _waveComplete.Refresh(_game);
         }
 
-        /// <summary>OUR-45: opens the Worker allocation sheet for a building (a tap on the island).</summary>
-        internal void OpenWorkerAllocation(BuildingId building) => _workers.Open(_game, building);
+        /// <summary>OUR-45: opens the Worker allocation sheet for a building (a tap on the island or a needs-panel row).</summary>
+        internal void OpenWorkerAllocation(BuildingId building)
+        {
+            if (CanOpenWorkerSheet != null && !CanOpenWorkerSheet(building))
+            {
+                WorkerSheetRefused?.Invoke(building);
+                return;
+            }
+
+            _workers.Open(_game, building);
+        }
 
         /// <summary>OUR-27: Welcome Guests pressed.</summary>
-        internal void StartWave() => _game.StartWave();
+        internal void StartWave()
+        {
+            if (IsWaveStartAllowed) _game.StartWave();
+        }
 
         /// <summary>OUR-40: Continue pressed on Wave Complete.</summary>
-        internal void ContinueAfterWave() => _game.ContinueAfterWave();
+        internal void ContinueAfterWave()
+        {
+            if (_continueOverride != null) _continueOverride();
+            else _game.ContinueAfterWave();
+        }
+
+        /// <summary>Tutorial: Wave Complete's button shows <paramref name="label"/> and runs <paramref name="onContinue"/> instead.</summary>
+        internal void OverrideContinue(string label, System.Action onContinue)
+        {
+            ContinueLabelOverride = label;
+            _continueOverride = onContinue;
+        }
+
+        /// <summary>Tutorial: HOW TO PLAY pressed on S1. Opens the Tutorial scene; this game (still before wave 1) is dropped.</summary>
+        internal void OpenTutorial() => GameScenes.LoadTutorial();
 
         /// <summary>Play Again pressed after the last wave: a new game from wave 1 (OnGameCreated takes it over).</summary>
         internal void PlayAgain() => controller.NewGame();

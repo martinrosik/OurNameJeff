@@ -18,5 +18,22 @@ namespace ResortEmpire.Editor
                 EditorSceneManager.OpenScene(GameScenePath);
             }
         }
+
+        [MenuItem("Resort Empire/Open Tutorial Scene", priority = 1)]
+        private static void OpenTutorialScene()
+        {
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(TutorialSceneBuilder.TutorialScenePath);
+            }
+        }
+
+        /// <summary>Forgets that the tutorial was played on this machine (a build then opens it on launch again).</summary>
+        [MenuItem("Resort Empire/Reset Tutorial Progress", priority = 2)]
+        private static void ResetTutorialProgress()
+        {
+            ResortEmpire.Game.TutorialProgress.Reset();
+            UnityEngine.Debug.Log("Tutorial progress reset: the tutorial counts as not played on this machine.");
+        }
     }
 }
