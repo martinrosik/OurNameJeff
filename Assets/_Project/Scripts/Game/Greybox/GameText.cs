@@ -23,12 +23,18 @@ namespace ResortEmpire.Game
         /// <summary>OUR-38: a guest's feedback on a bottleneck, e.g. "Drinks takes a bit too long."</summary>
         public static string GuestComplaint(ResortGame game, NeedId need) => $"\"{Need(game, need)} takes a bit too long.\"";
 
-        /// <summary>Mini-event: "Rush at the Beach Bar!".</summary>
-        public static string MiniEventTitle(ResortGame game, BuildingId building) => $"Rush at the {Building(game, building)}!";
+        /// <summary>Sudden rush (Build doc §4.6): "Sudden rush at Beach Bar!".</summary>
+        public static string SuddenRushTitle(ResortGame game, BuildingId building) => $"Sudden rush at {Building(game, building)}!";
 
-        /// <summary>Mini-event: how many of the building's guests come at once, e.g. "6 guests want Drinks right now."</summary>
-        public static string MiniEventDetail(ResortGame game, MiniEvent miniEvent) =>
-            $"{miniEvent.Units} guests want {Need(game, miniEvent.Need)} right now.";
+        /// <summary>Sudden rush: "+6 guests want Drinks, and the Beach Bar has no Worker."</summary>
+        public static string SuddenRushDetail(ResortGame game, SuddenRush rush) =>
+            $"+{rush.Units} guests want {Need(game, rush.Need)}, and the {Building(game, rush.Building)} has no Worker.";
+
+        /// <summary>Sudden rush: the main choice, a Worker move (Build doc §4.6 "Move Worker here").</summary>
+        public const string SuddenRushMoveWorker = "Move Worker here";
+
+        /// <summary>Sudden rush: close the prompt; the guests come anyway and are served slowly (§4.9).</summary>
+        public const string SuddenRushIgnore = "Ignore";
 
         /// <summary>OUR-39: "Beach Bar is catching up".</summary>
         public static string CatchingUp(ResortGame game, BuildingId building) => $"{Building(game, building)} is catching up";

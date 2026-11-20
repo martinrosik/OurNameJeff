@@ -22,12 +22,13 @@ namespace ResortEmpire.Core
             else
             {
                 if (config.wave.waveTimer < 1f) errors.Add($"Wave timer must be at least 1 s (is {config.wave.waveTimer}).");
-                if (config.wave.miniEventEnabled)
+                if (config.wave.suddenRushEnabled)
                 {
-                    if (config.wave.miniEventEarliest > config.wave.miniEventLatest) errors.Add($"Mini-event: miniEventEarliest ({config.wave.miniEventEarliest}) must not be after miniEventLatest ({config.wave.miniEventLatest}).");
-                    if (config.wave.miniEventLatest >= config.wave.waveTimer) errors.Add($"Mini-event: miniEventLatest ({config.wave.miniEventLatest}) must be before waveTimer ({config.wave.waveTimer}), while guests are still on their way.");
-                    if (config.wave.miniEventUnits < 1) errors.Add($"Mini-event: miniEventUnits must be at least 1 (is {config.wave.miniEventUnits}).");
-                    if (config.wave.miniEventDuration <= 0f) errors.Add($"Mini-event: miniEventDuration must be above 0 s (is {config.wave.miniEventDuration}).");
+                    if (config.wave.suddenRushTime >= config.wave.waveTimer) errors.Add($"Sudden rush: suddenRushTime ({config.wave.suddenRushTime}) must be before waveTimer ({config.wave.waveTimer}), inside the arrivals (Build doc §4.9).");
+                    if (config.wave.suddenRushWave < 1) errors.Add($"Sudden rush: suddenRushWave must be at least 1 (is {config.wave.suddenRushWave}).");
+                    if (config.wave.suddenRushChance < 0f || config.wave.suddenRushChance > 1f) errors.Add($"Sudden rush: suddenRushChance must be between 0 and 1 (is {config.wave.suddenRushChance}).");
+                    if (config.wave.suddenRushUnits < 1) errors.Add($"Sudden rush: suddenRushUnits must be at least 1 (is {config.wave.suddenRushUnits}).");
+                    if (config.wave.suddenRushDuration <= 0f) errors.Add($"Sudden rush: suddenRushDuration must be above 0 s (is {config.wave.suddenRushDuration}).");
                 }
 
                 if (config.wave.bottleneckThreshold < 1) errors.Add($"bottleneckThreshold must be at least 1 (is {config.wave.bottleneckThreshold}).");

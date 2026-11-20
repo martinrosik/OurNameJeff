@@ -34,7 +34,7 @@ namespace ResortEmpire.Core
             GameConfig practice = Instantiate(baseConfig);
             practice.name = $"{baseConfig.name} (practice wave)";
             practice.wave.waveTimer = arrivalSeconds;
-            practice.wave.miniEventEnabled = false; // the practice wave teaches one problem at a time
+            practice.wave.suddenRushEnabled = false; // the practice wave teaches one problem at a time
             practice.waves = new List<WaveDefinition> { Copy(practiceWave) };
             return practice;
         }

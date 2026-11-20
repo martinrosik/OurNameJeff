@@ -29,11 +29,11 @@ namespace ResortEmpire.Core
         }
 
         /// <summary>
-        /// Mini-event: keeps the first <paramref name="keepFirst"/> guests (already on the island) as they are, and
-        /// shares out every other unit again by its current arrival time. The guests that come early in the rush then
-        /// step off the boat early too. Counts per need stay the same.
+        /// Sudden rush: keeps the first <paramref name="keepFirst"/> guests (already on the island) as they are, and
+        /// shares out every other unit again by its current arrival time, now including the rush's extra units, over
+        /// the remaining guests plus <paramref name="extraGuests"/> new ones. Visits per need then match the new totals.
         /// </summary>
-        public GuestPlan Replan(WaveSimulation wave, int keepFirst)
+        public GuestPlan Replan(WaveSimulation wave, int keepFirst, int extraGuests = 0)
         {
             if (wave == null) throw new ArgumentNullException(nameof(wave));
             keepFirst = Math.Max(0, Math.Min(keepFirst, _guests.Count));
@@ -46,7 +46,7 @@ namespace ResortEmpire.Core
                 foreach (GuestVisit visit in _guests[i].Visits) taken.Add((visit.Need, visit.Unit));
             }
 
-            kept.AddRange(Plan(wave, taken, Math.Max(1, _guests.Count - keepFirst)));
+            kept.AddRange(Plan(wave, taken, Math.Max(1, _guests.Count - keepFirst + Math.Max(0, extraGuests))));
             return new GuestPlan(kept);
         }
 

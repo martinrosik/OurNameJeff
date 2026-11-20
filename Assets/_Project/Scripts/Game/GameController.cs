@@ -59,7 +59,7 @@ namespace ResortEmpire.Game
         /// <summary>Starts over from the config's starting state.</summary>
         public void NewGame()
         {
-            Game = new ResortGame(config, new System.Random()); // the random source picks each wave's mini-event moment
+            Game = new ResortGame(config, new System.Random()); // decides which later waves get a Sudden rush
             GameCreated?.Invoke(Game);
         }
 

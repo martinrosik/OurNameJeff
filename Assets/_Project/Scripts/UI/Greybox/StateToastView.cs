@@ -12,7 +12,6 @@ namespace ResortEmpire.UI
     /// <list type="bullet">
     /// <item>BOTTLENECK: red "! Beach Bar queue growing" with a guest quote ("Drinks takes a bit too long.");</item>
     /// <item>RECOVERING: green "Beach Bar is catching up", in the same frame as the Worker move that caused it.</item>
-    /// <item>Mini-event: orange "Rush at the Beach Bar!" with "6 guests want Drinks right now." when it starts.</item>
     /// </list>
     /// It sits in the top bar, fades after a few seconds. Never a countdown or a satisfaction number (Build doc §4.4).
     /// </summary>
@@ -31,7 +30,6 @@ namespace ResortEmpire.UI
         private readonly TextMeshProUGUI _quote;
         private readonly Dictionary<NeedId, NeedState> _lastStates = new Dictionary<NeedId, NeedState>();
         private ResortGame _game;
-        private MiniEvent _shownMiniEvent;
         private float _age = float.MaxValue;
 
         public StateToastView(RectTransform islandArea)
@@ -61,20 +59,7 @@ namespace ResortEmpire.UI
             {
                 _game = game;
                 _lastStates.Clear();
-                _shownMiniEvent = null;
                 Hide();
-            }
-
-            // Mini-event: tell the player once, when the rush starts.
-            MiniEvent miniEvent = game.CurrentWave?.MiniEvent;
-            if (miniEvent != null && miniEvent != _shownMiniEvent && game.Phase == GamePhase.WaveActive)
-            {
-                _shownMiniEvent = miniEvent;
-                BuildingDefinition building = game.Config.GetBuildingForNeed(miniEvent.Need);
-                if (building != null)
-                {
-                    Show(GameText.MiniEventTitle(game, building.building), GameText.MiniEventDetail(game, miniEvent), GreyboxPalette.Primary);
-                }
             }
 
             foreach (BuildingRuntime building in game.Buildings)

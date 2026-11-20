@@ -22,7 +22,8 @@ namespace ResortEmpire.Tests
         private IslandView _island;
 
         private float _savedServiceTime;
-        private bool _savedMiniEvent;
+        private bool _savedSuddenRush;
+        private int _savedSuddenRushWave;
 
         private ResortGame Game => _controller.Game;
 
@@ -56,10 +57,11 @@ namespace ResortEmpire.Tests
             _controller.SimulationSpeed = 0f; // tests drive time themselves
             _savedServiceTime = Game.Config.wave.serviceTime;
 
-            // The mini-event comes at a random moment; tests that count arrivals need steady ones. The test for the
-            // mini-event turns it back on. The config is the real asset, so TearDown restores the value.
-            _savedMiniEvent = Game.Config.wave.miniEventEnabled;
-            Game.Config.wave.miniEventEnabled = false;
+            // A Sudden rush adds guests; tests that count arrivals need the plain wave. The Sudden rush tests turn it
+            // back on. The config is the real asset, so TearDown restores the values.
+            _savedSuddenRush = Game.Config.wave.suddenRushEnabled;
+            _savedSuddenRushWave = Game.Config.wave.suddenRushWave;
+            Game.Config.wave.suddenRushEnabled = false;
         }
 
         [TearDown]
@@ -67,7 +69,8 @@ namespace ResortEmpire.Tests
         {
             if (_controller == null) return;
             _controller.Game.Config.wave.serviceTime = _savedServiceTime;
-            _controller.Game.Config.wave.miniEventEnabled = _savedMiniEvent;
+            _controller.Game.Config.wave.suddenRushEnabled = _savedSuddenRush;
+            _controller.Game.Config.wave.suddenRushWave = _savedSuddenRushWave;
         }
 
         [UnityTest]
@@ -820,33 +823,58 @@ namespace ResortEmpire.Tests
             Assert.IsFalse(Game.GetBuilding(BuildingId.Restaurant).HasWorker, "Workers start where the config puts them.");
         }
 
-        [UnityTest]
-        public IEnumerator MiniEvent_TheLeastBusyBuildingGetsARushOfItsOwnGuests()
+        /// <summary>Starts wave 1 with a Sudden rush (as wave 2 would have) and plays it to just after 45 s.</summary>
+        private IEnumerator StartWaveWithSuddenRush()
         {
-            Game.Config.wave.miniEventEnabled = true;
+            Game.Config.wave.suddenRushEnabled = true;
+            Game.Config.wave.suddenRushWave = 1;
             Game.StartWave();
             Game.Tick(Game.Config.wave.incomingDuration);
-            int totalUnits = Game.CurrentWave.TotalUnits;
-            double due = Game.CurrentWave.ScheduledMiniEventTime;
-            Assert.That(due, Is.InRange(30.0, 60.0), "Once per wave, at a random moment between 30 and 60 s.");
-
-            while (Game.CurrentWave.MiniEvent == null && Game.WaveTime < 61) Game.Tick(0.25);
+            for (int i = 0; i < 46; i++) Game.Tick(1);
             yield return null;
+        }
 
-            MiniEvent miniEvent = Game.CurrentWave.MiniEvent;
-            Assert.IsNotNull(miniEvent);
-            BuildingId building = Game.Config.GetBuildingForNeed(miniEvent.Need).building;
-            Assert.IsTrue(_ui.StateToast.IsVisible);
-            Assert.AreEqual($"Rush at the {Game.Config.GetBuilding(building).displayName}!", _ui.StateToast.Title);
-            Assert.AreEqual(totalUnits, Game.CurrentWave.TotalUnits, "Nobody new comes.");
+        [UnityTest]
+        public IEnumerator SuddenRush_ThePanelAsksToMoveAWorkerToTheBuildingWithoutOne()
+        {
+            yield return StartWaveWithSuddenRush();
 
-            // Guests the steady schedule would have brought by the start, plus the rushed ones, all here 10 s later.
-            int total = Game.CurrentWave.GetTotal(miniEvent.Need);
-            int steadyByStart = (int)System.Math.Floor(miniEvent.StartTime * total / Game.Config.wave.waveTimer + 1e-9);
-            for (int i = 0; i < 11; i++) Game.Tick(1);
-            Assert.GreaterOrEqual(Game.GetNeedStatus(miniEvent.Need).Arrived, steadyByStart + miniEvent.Units,
-                "The rushed guests arrive within the rush's 10 s.");
-            Assert.AreEqual(total, Game.GetNeedStatus(miniEvent.Need).Total, "The building's demand stays the same.");
+            SuddenRush rush = Game.CurrentWave.SuddenRush;
+            Assert.IsNotNull(rush);
+            Assert.AreEqual(BuildingId.Restaurant, rush.Building, "The Restaurant has no Worker.");
+            Assert.AreEqual(12, Game.GetNeedStatus(NeedId.Food).Total, "Food 6 + 6 extra guests.");
+            Assert.AreEqual(GamePhase.WaveActive, Game.Phase, "The wave doesn't pause.");
+
+            SuddenRushPromptView prompt = _ui.SuddenRush;
+            Assert.IsTrue(prompt.IsVisible);
+            Assert.AreEqual("Sudden rush at Restaurant!", prompt.Title);
+            Assert.AreEqual("+6 guests want Food, and the Restaurant has no Worker.", prompt.Detail);
+
+            prompt.MoveWorkerButton.onClick.Invoke();
+            yield return null;
+            Assert.IsTrue(_ui.Workers.IsOpen, "Move Worker here opens Worker Allocation for the Restaurant.");
+
+            Assert.AreEqual(WorkerMoveResult.Moved, Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant));
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible, "A Worker is there now: the prompt goes away.");
+        }
+
+        [UnityTest]
+        public IEnumerator SuddenRush_IgnoreClosesThePromptAndTheGuestsStillCome()
+        {
+            yield return StartWaveWithSuddenRush();
+            SuddenRushPromptView prompt = _ui.SuddenRush;
+            Assert.IsTrue(prompt.IsVisible);
+
+            prompt.IgnoreButton.onClick.Invoke();
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible);
+
+            for (int i = 0; i < 10; i++) Game.Tick(1);
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible, "It doesn't come back.");
+            Assert.AreEqual(12, Game.GetNeedStatus(NeedId.Food).Total, "The extra guests come anyway (Build doc §4.9).");
+            Assert.GreaterOrEqual(Game.GetNeedStatus(NeedId.Food).Arrived, 3 + 6, "3 steady Food guests by 45 s, then all 6 extra ones by 55 s.");
         }
     }
 }
