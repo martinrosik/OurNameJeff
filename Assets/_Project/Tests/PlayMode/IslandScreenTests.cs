@@ -343,6 +343,32 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheNeedsPanelSaysAllServedOnlyOnceTheLastGuestHasWalkedOut()
+        {
+            GuestCrowdView guests = _island.Guests;
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+
+            // The Core is done with Rooms (the last unit arrives at 90 s and takes 12 s) ...
+            while (Game.GetNeedState(NeedId.Rooms) != NeedState.Satisfied && Game.WaveTime < 200) PlayInLockstep(0.05);
+            Assume.That(guests.GetShownServed(NeedId.Rooms), Is.LessThan(8), "The last Rooms guest is still in the Reception.");
+            yield return null;
+
+            // ... but the panel waits for the last guest to walk out.
+            NeedRowView rooms = _ui.Needs.Rows[0];
+            StringAssert.EndsWith($"{guests.GetShownServed(NeedId.Rooms)}/8", rooms.ProgressText);
+            Assert.AreEqual("OK", rooms.StateText, "Not \"All served\" while the count says 7/8.");
+            AssertRowColor(rooms, GreyboxPalette.NeedInProgress);
+
+            while (guests.GetShownServed(NeedId.Rooms) < 8 && Game.WaveTime < 300) PlayInLockstep(0.05);
+            yield return null;
+
+            Assert.AreEqual("Rooms  8/8", rooms.ProgressText);
+            Assert.AreEqual("All served", rooms.StateText);
+            AssertRowColor(rooms, GreyboxPalette.NeedGood);
+        }
+
+        [UnityTest]
         public IEnumerator TheNeedsPanelCountsAGuestServedOnlyOnceItHasWalkedOut()
         {
             GuestCrowdView guests = _island.Guests;

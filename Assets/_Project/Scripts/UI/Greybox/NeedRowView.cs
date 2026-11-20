@@ -93,6 +93,10 @@ namespace ResortEmpire.UI
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
             NeedState state = game.GetNeedState(need);
+
+            // "All served" (and its green) only once the island shows it too: the last guests must have walked out,
+            // not just been served by the Core. Until then the row stays "OK" with the count still filling up.
+            if (state == NeedState.Satisfied && status.Served < status.Total) state = NeedState.Ok;
             Color stateColor = GetStateColor(state);
             Sprite icon = UIFactory.GetNeedIcon(need);
 
