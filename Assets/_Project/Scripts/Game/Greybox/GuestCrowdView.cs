@@ -107,6 +107,35 @@ namespace ResortEmpire.Game
         /// <summary>Guests (of all that visited it) who have walked into the building of <paramref name="need"/>.</summary>
         public int GetDeliveredCount(NeedId need) => _buildings.TryGetValue(need, out Building b) ? b.Delivered : 0;
 
+        /// <summary>
+        /// Guests the player has seen served at the building of <paramref name="need"/>: served by the Core <b>and</b>
+        /// walked out of the building again (its seat or queue square emptied). The Wave Needs Panel counts these, so
+        /// "Food 2/6" never runs ahead of what the island shows.
+        /// </summary>
+        public int GetShownServed(NeedId need)
+        {
+            if (!_buildings.TryGetValue(need, out Building b)) return 0;
+            return Mathf.Min(b.Left, b.Status.Served);
+        }
+
+        /// <summary>
+        /// A need's numbers as the island shows them, for the Wave Needs Panel: guests seated are the ones inside the
+        /// building (<see cref="GetShownSeated"/>), waiting the ones there beyond its seats (<see cref="GetShownWaiting"/>),
+        /// served the ones that walked out again (<see cref="GetShownServed"/>). Total and arrived stay the Core's.
+        /// </summary>
+        public NeedStatus GetShownStatus(NeedId need, NeedStatus core) =>
+            new NeedStatus(core.Need, core.Total, core.Arrived, GetShownWaiting(need), GetShownSeated(need), GetShownServed(need));
+
+        /// <summary>
+        /// Queue squares shown: guests at the building who found every seat taken. A queue square only appears once
+        /// the seats are full on the island, never ahead of it because the Core already seated someone still walking.
+        /// </summary>
+        public int GetShownWaiting(NeedId need)
+        {
+            if (!_buildings.TryGetValue(need, out Building b)) return 0;
+            return Mathf.Max(0, b.Inside - b.Seats);
+        }
+
         /// <summary>Seat squares shown as taken: guests inside the building, up to its seats.</summary>
         public int GetShownSeated(NeedId need)
         {
@@ -287,10 +316,12 @@ namespace ResortEmpire.Game
             }
         }
 
-        /// <summary>The guest walks out: its seat (or queue) square empties.</summary>
+        /// <summary>The guest walks out, served: its seat (or queue) square empties and it counts as served.</summary>
         private void LeaveBuilding(Walker walker)
         {
-            if (_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building) && building.Inside > 0) building.Inside--;
+            if (!_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building)) return;
+            if (building.Inside > 0) building.Inside--;
+            building.Left++; // served there: now the needs panel may count it
         }
 
         private float GetServiceSeconds(GuestVisit visit) =>
@@ -480,6 +511,9 @@ namespace ResortEmpire.Game
 
             /// <summary>Guests inside the building right now (fills its seat squares).</summary>
             public int Inside;
+
+            /// <summary>Guests that were served here and have walked out again.</summary>
+            public int Left;
             public int Seats;
         }
 

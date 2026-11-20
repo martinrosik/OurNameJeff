@@ -48,7 +48,7 @@ namespace ResortEmpire.Game
                 BuildingRuntime building = game.GetBuilding(view.Building);
                 if (guests != null && building != null)
                 {
-                    view.Refresh(game, guests.GetShownSeated(building.Need));
+                    view.Refresh(game, guests.GetShownSeated(building.Need), guests.GetShownWaiting(building.Need));
                 }
                 else
                 {

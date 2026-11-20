@@ -1,3 +1,4 @@
+using System;
 using ResortEmpire.Core;
 using ResortEmpire.Game;
 using TMPro;
@@ -78,12 +79,22 @@ namespace ResortEmpire.UI
         /// <summary>The filled part of the progress bar, from 0 to 1.</summary>
         public float BarFraction => _barFill.anchorMax.x;
 
-        public void Show(ResortGame game, NeedId need)
+        /// <param name="shownStatus">
+        /// The need's numbers as the island shows them: seated = guests inside the building, served = guests that have
+        /// walked out. Null uses the Core's numbers, which run ahead of the walking guests (a unit sits down the moment
+        /// it arrives, while its guest is still on the way, so "Full: 3/3 seats" could flash with nobody there).
+        /// </param>
+        public void Show(ResortGame game, NeedId need, Func<NeedId, NeedStatus, NeedStatus> shownStatus = null)
         {
             NeedStatus status = game.GetNeedStatus(need);
+            if (shownStatus != null) status = shownStatus(need, status);
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
             NeedState state = game.GetNeedState(need);
+
+            // "All served" (and its green) only once the island shows it too: the last guests must have walked out,
+            // not just been served by the Core. Until then the row stays "OK" with the count still filling up.
+            if (state == NeedState.Satisfied && status.Served < status.Total) state = NeedState.Ok;
             Color stateColor = GetStateColor(state);
             Sprite icon = UIFactory.GetNeedIcon(need);
 
