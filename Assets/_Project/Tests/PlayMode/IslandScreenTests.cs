@@ -285,7 +285,7 @@ namespace ResortEmpire.Tests
 
                 Assert.AreEqual(firstVisits, guests.GetDeliveredCount(need), $"{id}: guests whose first need is {need}.");
                 Assert.AreEqual(Mathf.Min(3, firstVisits), view.ShownSeated, $"{id}: seats taken by those guests.");
-                Assert.AreEqual(Game.GetNeedStatus(need).Waiting, view.ShownWaiting, $"{id}: queue squares match the needs panel.");
+                Assert.AreEqual(Mathf.Max(0, firstVisits - 3), view.ShownWaiting, $"{id}: queue squares for the guests beyond its seats.");
             }
         }
 
@@ -366,6 +366,37 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator AQueueSquareAppearsOnlyOnceEverySeatIsTaken()
+        {
+            GuestCrowdView guests = _island.Guests;
+            BuildingView reception = _island.GetView(BuildingId.Reception);
+            PauseService();
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer); // the Core has Rooms 3 seated, 5 waiting
+            yield return null;
+
+            Assert.Greater(Game.GetNeedStatus(NeedId.Rooms).Waiting, 0, "The Core already queues Rooms guests ...");
+            Assert.AreEqual(0, reception.ShownWaiting, "... but none has reached the Reception yet: no queue square.");
+
+            // While the guests walk in, a queue square only ever shows next to three taken seats.
+            for (int i = 0; i < 1200; i++)
+            {
+                guests.FastForward(0.05f);
+                foreach (NeedId need in new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food })
+                {
+                    if (guests.GetShownWaiting(need) > 0)
+                    {
+                        Assert.AreEqual(3, guests.GetShownSeated(need), $"{need}: queue square before the seats were full");
+                    }
+                }
+            }
+
+            yield return null;
+            Assert.Greater(reception.ShownWaiting, 0, "Once the seats are full, the next Rooms guests queue.");
+            Assert.AreEqual(3, reception.ShownSeated);
+        }
+
+        [UnityTest]
         public IEnumerator TheNeedsPanelSaysAllServedOnlyOnceTheLastGuestHasWalkedOut()
         {
             GuestCrowdView guests = _island.Guests;
@@ -428,13 +459,15 @@ namespace ResortEmpire.Tests
             NeedRowView rooms = _ui.Needs.Rows[0];
             NeedRowView food = _ui.Needs.Rows[2];
             Assert.AreEqual(3, _island.GetView(BuildingId.Reception).ShownSeated, "Three guests sit in the Reception.");
-            int roomsWaiting = Game.GetNeedStatus(NeedId.Rooms).Waiting;
-            int foodWaiting = Game.GetNeedStatus(NeedId.Food).Waiting;
+            int roomsWaiting = _island.Guests.GetShownWaiting(NeedId.Rooms);
+            int foodSeated = _island.Guests.GetShownSeated(NeedId.Food);
+            int foodWaiting = _island.Guests.GetShownWaiting(NeedId.Food);
 
             Assert.AreEqual("Reception: Worker", rooms.StaffingText);
             Assert.AreEqual($"Full: 3/3 seats, {roomsWaiting} waiting", rooms.QueueText);
-            Assert.AreEqual("Restaurant: No Worker (slow)", food.StaffingText);
-            Assert.AreEqual($"{foodWaiting} waiting", food.QueueText, "Without a Worker the problem is not the size.");
+            Assert.AreEqual("Restaurant: No Worker (slow)", food.StaffingText, "Small or empty: the staffing line tells them apart (AC2d).");
+            Assert.AreEqual(foodSeated >= 3 ? $"Full: 3/3 seats, {foodWaiting} waiting" : $"{foodWaiting} waiting", food.QueueText,
+                "Full whenever every seat is taken, with or without a Worker.");
         }
 
         [UnityTest]

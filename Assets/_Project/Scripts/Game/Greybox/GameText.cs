@@ -110,11 +110,14 @@ namespace ResortEmpire.Game
         public static string BuildingStaffing(BuildingRuntime building) =>
             $"{building.Definition.displayName}: {(building.HasWorker ? "Worker" : $"{NoWorkerLabel} (slow)")}";
 
-        /// <summary>"Full" appears only with a Worker: then a queue means the building is too small, not understaffed.</summary>
+        /// <summary>
+        /// "Full: 3/3 seats, 2 waiting" whenever every seat is taken, with or without a Worker; whether the building is
+        /// staffed is the row's other line ("Restaurant: No Worker (slow)" in red), so small and empty stay apart (AC2d).
+        /// </summary>
         public static string NeedQueue(NeedStatus status, BuildingRuntime building)
         {
             string waiting = $"{status.Waiting} waiting";
-            bool isFull = building.HasWorker && status.Seated >= building.Seats;
+            bool isFull = status.Seated >= building.Seats;
             return isFull ? $"Full: {status.Seated}/{building.Seats} seats, {waiting}" : waiting;
         }
 

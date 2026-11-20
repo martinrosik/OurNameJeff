@@ -116,7 +116,8 @@ namespace ResortEmpire.Game
         }
 
         /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
-        public void Refresh(ResortGame game, int? seated = null)
+        /// <param name="waiting">Queue squares to show; null shows the Core's queue.</param>
+        public void Refresh(ResortGame game, int? seated = null, int? waiting = null)
         {
             // Hidden while its building isn't on the island, and shown again once it is (an unlock, or a new game).
             BuildingRuntime runtime = game.GetBuilding(building);
@@ -129,8 +130,8 @@ namespace ResortEmpire.Game
 
             ShowState(game.GetBuildingState(building));
             ShowSeats(runtime.Seats, seated ?? game.GetSeatedCount(building));
-            // The queue dots show the Core's queue, the same number as the needs panel (OUR-37).
-            ShowQueue(game.GetNeedStatus(runtime.Need).Waiting);
+            // The queue squares show the guests at the building beyond its seats, the same number as the needs panel (OUR-37).
+            ShowQueue(waiting ?? game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
         }
 
