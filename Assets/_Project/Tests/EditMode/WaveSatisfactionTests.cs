@@ -52,6 +52,45 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(expected, WaveSatisfaction.GetUnitContribution(waitSeconds, Settings), 1e-6);
         }
 
+        [TestCase(0, GuestMood.Happy)]
+        [TestCase(10, GuestMood.Happy)]
+        [TestCase(10.5, GuestMood.Neutral)]
+        [TestCase(29.5, GuestMood.Neutral)]
+        [TestCase(30, GuestMood.Unhappy)]
+        [TestCase(120, GuestMood.Unhappy)]
+        public void GuestMoodFollowsTheSameThresholdsAsTheUnitContribution(double waitSeconds, GuestMood expected)
+        {
+            Assert.AreEqual(expected, WaveSatisfaction.GetGuestMood(waitSeconds, Settings));
+        }
+
+        [Test]
+        public void GuestMoodFollowsTunedThresholds()
+        {
+            Settings.patienceGrace = 5f;
+            Settings.patienceFloorAfter = 15f;
+
+            Assert.AreEqual(GuestMood.Neutral, WaveSatisfaction.GetGuestMood(8, Settings));
+            Assert.AreEqual(GuestMood.Unhappy, WaveSatisfaction.GetGuestMood(15, Settings));
+        }
+
+        [Test]
+        public void TheWaitOfAUnitIsKnownOnceItSitsDown()
+        {
+            WaveSimulation wave = HandServedWave(20, 1, (NeedId.Food, 2)); // arrivals at 10 s and 20 s
+
+            wave.AdvanceTo(35);
+            Assert.IsTrue(wave.TryGetWaitTime(NeedId.Food, 0, out double first));
+            Assert.AreEqual(0, first, 1e-9, "Unit 0 found a free seat.");
+            Assert.IsFalse(wave.TryGetWaitTime(NeedId.Food, 1, out _), "Unit 1 is still in the queue.");
+
+            Assert.IsTrue(wave.FinishService(NeedId.Food));
+            Assert.IsTrue(wave.TryGetWaitTime(NeedId.Food, 1, out double second));
+            Assert.AreEqual(15, second, 1e-9, "Unit 1 waited from 20 s to 35 s.");
+
+            Assert.IsFalse(wave.TryGetWaitTime(NeedId.Rooms, 0, out _), "Rooms isn't in this wave.");
+            Assert.IsFalse(wave.TryGetWaitTime(NeedId.Food, -1, out _));
+        }
+
         [TestCase(40, WaveRating.OneStar)]
         [TestCase(54.99, WaveRating.OneStar)]
         [TestCase(55, WaveRating.TwoStars)]

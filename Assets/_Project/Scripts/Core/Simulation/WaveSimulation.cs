@@ -245,6 +245,19 @@ namespace ResortEmpire.Core
         public IReadOnlyList<double> GetWaitTimes(NeedId need) =>
             _needs.TryGetValue(need, out NeedQueue queue) ? queue.WaitTimes : (IReadOnlyList<double>)Array.Empty<double>();
 
+        /// <summary>
+        /// Guest mood bubbles: how long unit <paramref name="unit"/> (0-based, arrival order) of a need waited for its
+        /// seat. Units sit down first come, first served (a queue only forms while every seat is taken), so the n-th
+        /// wait recorded is unit n's. False while the unit hasn't sat down yet, or for a need that isn't in this wave.
+        /// </summary>
+        public bool TryGetWaitTime(NeedId need, int unit, out double waitSeconds)
+        {
+            waitSeconds = 0;
+            if (unit < 0 || !_needs.TryGetValue(need, out NeedQueue queue) || unit >= queue.WaitTimes.Count) return false;
+            waitSeconds = queue.WaitTimes[unit];
+            return true;
+        }
+
         /// <summary>Arrival time of unit <paramref name="index"/> (0-based) of a need.</summary>
         public double GetArrivalTime(NeedId need, int index) => Get(need).ArrivalTimes[index];
 

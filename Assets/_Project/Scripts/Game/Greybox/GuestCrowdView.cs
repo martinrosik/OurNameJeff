@@ -28,6 +28,12 @@ namespace ResortEmpire.Game
     /// anyone is there. The queue dots under a building show the Core's queue instead (<see cref="BuildingView"/>),
     /// so they always match the needs panel.
     /// </para>
+    /// <para>
+    /// <b>Mood bubbles:</b> when a guest walks out of a building, a bubble above it shows for a moment how that visit
+    /// went: a smile, a flat face or a frown, from how long it waited for its seat (<see cref="WaveSatisfaction.GetGuestMood"/>,
+    /// the same thresholds Wave Satisfaction uses). Only a face, never a number or a countdown: the Build doc (§4.4)
+    /// keeps the score for Wave Complete. See docs/design-conflicts.md.
+    /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
     {
@@ -60,12 +66,21 @@ namespace ResortEmpire.Game
 
         [SerializeField] private int sortingOrder = 7;
 
+        [Tooltip("How long a mood bubble stays above a guest who has just walked out of a building, in seconds.")]
+        [SerializeField, Min(0.1f)] private float moodBubbleSeconds = 2f;
+
+        [Tooltip("Width of a mood bubble on screen, in world units.")]
+        [SerializeField, Min(0.05f)] private float moodBubbleSize = 0.6f;
+
         private const float FadeSeconds = 0.35f;
+        private const float BubblePopSeconds = 0.15f;
         private const float PathSpread = 0.14f;
         private const float StepSeconds = 0.05f;
 
         private readonly List<Walker> _walkers = new List<Walker>();
         private readonly Stack<SpriteRenderer> _pool = new Stack<SpriteRenderer>();
+        private readonly Stack<SpriteRenderer> _bubblePool = new Stack<SpriteRenderer>();
+        private SatisfactionSettings _satisfaction;
         private readonly Dictionary<NeedId, Building> _buildings = new Dictionary<NeedId, Building>();
         private readonly System.Random _random = new System.Random(34);
         private WaveSimulation _wave;
@@ -143,9 +158,23 @@ namespace ResortEmpire.Game
             return Mathf.Min(b.Inside, b.Seats);
         }
 
+        /// <summary>The moods of the bubbles above guests right now, one per bubble.</summary>
+        internal List<GuestMood> GetShownMoods()
+        {
+            var moods = new List<GuestMood>();
+            foreach (Walker walker in _walkers)
+            {
+                if (walker.Bubble != null) moods.Add(walker.Mood);
+            }
+
+            return moods;
+        }
+
         /// <summary>Sends out guests whose first unit the Core has released. Called by <see cref="IslandView"/>.</summary>
         public void Refresh(ResortGame game, IslandView island)
         {
+            _satisfaction = game.Config.satisfaction;
+
             if (game.CurrentWave != _wave)
             {
                 Clear();
@@ -218,10 +247,80 @@ namespace ResortEmpire.Game
             {
                 if (!StepWalker(_walkers[i], dt))
                 {
+                    HideBubble(_walkers[i]);
                     Recycle(_walkers[i].Renderer);
                     _walkers.RemoveAt(i);
                 }
+                else
+                {
+                    StepBubble(_walkers[i], dt);
+                }
             }
+        }
+
+        /// <summary>
+        /// The guest has just walked out of the building of <paramref name="visit"/>: a bubble above it shows how long
+        /// it waited for its seat there.
+        /// </summary>
+        private void ShowMood(Walker walker, GuestVisit visit)
+        {
+            if (_wave == null || _satisfaction == null) return;
+            if (!_wave.TryGetWaitTime(visit.Need, visit.Unit, out double wait)) return;
+
+            HideBubble(walker);
+            walker.Mood = WaveSatisfaction.GetGuestMood(wait, _satisfaction);
+            walker.Bubble = TakeBubble();
+            walker.Bubble.sprite = MoodBubbleArt.Get(walker.Mood);
+            walker.Bubble.sortingOrder = sortingOrder + 1; // above every guest
+            walker.BubbleTime = 0f;
+            StepBubble(walker, 0f);
+        }
+
+        /// <summary>Keeps the bubble above the guest's head: pops in, stays, then fades out.</summary>
+        private void StepBubble(Walker walker, float dt)
+        {
+            if (walker.Bubble == null) return;
+
+            walker.BubbleTime += dt;
+            if (walker.BubbleTime >= moodBubbleSeconds)
+            {
+                HideBubble(walker);
+                return;
+            }
+
+            Bounds body = walker.Renderer.bounds;
+            Vector3 head = transform.InverseTransformPoint(new Vector3(body.center.x, body.max.y, body.center.z));
+            walker.Bubble.transform.localPosition = head + new Vector3(0f, 0.02f, 0f);
+
+            float pop = Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(walker.BubbleTime / BubblePopSeconds));
+            float scale = moodBubbleSize * pop;
+            walker.Bubble.transform.localScale = new Vector3(scale, scale, 1f);
+
+            float fadeIn = Mathf.Clamp01(walker.BubbleTime / BubblePopSeconds);
+            float fadeOut = Mathf.Clamp01((moodBubbleSeconds - walker.BubbleTime) / FadeSeconds);
+            walker.Bubble.color = new Color(1f, 1f, 1f, Mathf.Min(fadeIn, fadeOut));
+        }
+
+        private void HideBubble(Walker walker)
+        {
+            if (walker.Bubble == null) return;
+            walker.Bubble.gameObject.SetActive(false);
+            _bubblePool.Push(walker.Bubble);
+            walker.Bubble = null;
+        }
+
+        private SpriteRenderer TakeBubble()
+        {
+            if (_bubblePool.Count > 0)
+            {
+                SpriteRenderer pooled = _bubblePool.Pop();
+                pooled.gameObject.SetActive(true);
+                return pooled;
+            }
+
+            var go = new GameObject("MoodBubble");
+            go.transform.SetParent(transform, false);
+            return go.AddComponent<SpriteRenderer>();
         }
 
         /// <summary>Where guests walk into a building: its door, or the plaza when the building has no view on the island.</summary>
@@ -319,6 +418,7 @@ namespace ResortEmpire.Game
         /// <summary>The guest walks out, served: its seat (or queue) square empties and it counts as served.</summary>
         private void LeaveBuilding(Walker walker)
         {
+            ShowMood(walker, walker.CurrentVisit);
             if (!_buildings.TryGetValue(walker.CurrentVisit.Need, out Building building)) return;
             if (building.Inside > 0) building.Inside--;
             building.Left++; // served there: now the needs panel may count it
@@ -472,7 +572,12 @@ namespace ResortEmpire.Game
 
         private void Clear()
         {
-            foreach (Walker walker in _walkers) Recycle(walker.Renderer);
+            foreach (Walker walker in _walkers)
+            {
+                HideBubble(walker);
+                Recycle(walker.Renderer);
+            }
+
             _walkers.Clear();
             _buildings.Clear();
             _plan = null;
@@ -542,6 +647,11 @@ namespace ResortEmpire.Game
             public Vector3[] Waypoints;
             public int NextWaypoint;
             public bool GoingHome;
+
+            /// <summary>The mood bubble above the guest, or null when it shows none.</summary>
+            public SpriteRenderer Bubble;
+            public GuestMood Mood;
+            public float BubbleTime;
         }
     }
 }
