@@ -39,6 +39,24 @@ namespace ResortEmpire.Core
         [Tooltip("Wave difficulty: every wave is harder than the one before it. When the wave table's next wave isn't bigger in total for the needs on the island (waves 4 and 7 debut needs whose buildings aren't built), the previous wave's demand and guests grow by this share instead, rounded up (0.125 = +12.5 %). Kept below the table's ~25 % growth, so the waves after it keep their table numbers.")]
         [Min(0.01f)] public float growthIfNotHarder = 0.125f;
 
+        [Tooltip("Sudden rush (Build doc §4.6): extra guests at the building that has no Worker right then. Off in the tutorial.")]
+        public bool suddenRushEnabled = true;
+
+        [Tooltip("Sudden rush: the wave (1-based) that always has one (Build doc rush_wave: 2). Earlier waves never have one.")]
+        [Min(1)] public int suddenRushWave = 2;
+
+        [Tooltip("Sudden rush: chance (0–1) that a later wave has one too. Not in the Build doc (it only has wave 2); waves that debut a need never get one (§4.8). TUNING.")]
+        [Range(0f, 1f)] public float suddenRushChance = 0.5f;
+
+        [Tooltip("Sudden rush: wave time it starts, in seconds (Build doc rush_time_s: 45). A fixed moment inside the arrivals, before waveTimer.")]
+        [Min(0f)] public float suddenRushTime = 45f;
+
+        [Tooltip("Sudden rush: extra units of the building's need, added on top of the wave's demand (Build doc rush_units: 6).")]
+        [Min(1)] public int suddenRushUnits = 6;
+
+        [Tooltip("Sudden rush: seconds over which those extra units arrive (Build doc rush_duration_s: 10).")]
+        [Min(0.1f)] public float suddenRushDuration = 10f;
+
         /// <summary>Seconds one seat takes to serve one guest, with or without a Worker.</summary>
         public double GetServiceSeconds(bool hasWorker) => serviceTime / (double)(hasWorker ? utilizationStaffed : utilizationEmpty);
     }

@@ -28,6 +28,12 @@ namespace ResortEmpire.Core
     /// result.
     /// </para>
     /// <para>
+    /// <b>Sudden rush</b> (Build doc §4.6): when the wave is created with a rush, at <see cref="WaveSettings.suddenRushTime"/>
+    /// the building without a Worker gets <see cref="WaveSettings.suddenRushUnits"/> extra units of its need, arriving
+    /// over <see cref="WaveSettings.suddenRushDuration"/> seconds on top of the wave's demand (<see cref="SuddenRush"/>).
+    /// <see cref="ResortGame"/> decides which waves get one.
+    /// </para>
+    /// <para>
     /// <b>OUR-38 / OUR-39 need states:</b> each need has a <see cref="NeedState"/> (Build doc §4.4). States are
     /// checked at every event and every <see cref="StateCheckInterval"/> s of wave time (a fixed grid, never at
     /// frame times), so they don't depend on the frame rate either, and right after a Worker move
@@ -49,6 +55,10 @@ namespace ResortEmpire.Core
         private readonly double _bottleneckHysteresis;
         private double _nextStateCheck;
         private double _lastStateCheck;
+        private readonly int _rushUnits;
+        private readonly double _rushDuration;
+        private readonly Func<NeedId?> _pickRushNeed;
+        private readonly Func<NeedId, BuildingId> _buildingForNeed;
 
         /// <param name="forecast">Demand for the needs on the island (already filtered by WR9).</param>
         /// <param name="waveTimer">Length of the arrival phase in seconds.</param>
@@ -58,15 +68,22 @@ namespace ResortEmpire.Core
         /// step. Null: nobody is served automatically (only <see cref="FinishService"/>).
         /// </param>
         /// <param name="settings">
-        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis. Null uses the Build doc defaults of
-        /// <see cref="WaveSettings"/>.
+        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis, and the mini-event settings. Null uses the Build doc
+        /// defaults of <see cref="WaveSettings"/>.
         /// </param>
+        /// <param name="pickRushNeed">
+        /// Sudden rush: null when this wave has none. Otherwise asked at <see cref="WaveSettings.suddenRushTime"/> which
+        /// need gets it (the one whose building has no Worker then); it may answer null, and then nothing happens.
+        /// </param>
+        /// <param name="buildingForNeed">Sudden rush: the building that serves a need (for <see cref="SuddenRush.Building"/>).</param>
         public WaveSimulation(
             WaveForecast forecast,
             double waveTimer,
             Func<NeedId, int> seatsForNeed,
             Func<NeedId, double> serviceSpeedForNeed = null,
-            WaveSettings settings = null)
+            WaveSettings settings = null,
+            Func<NeedId?> pickRushNeed = null,
+            Func<NeedId, BuildingId> buildingForNeed = null)
         {
             if (forecast == null) throw new ArgumentNullException(nameof(forecast));
             if (seatsForNeed == null) throw new ArgumentNullException(nameof(seatsForNeed));
@@ -77,6 +94,11 @@ namespace ResortEmpire.Core
             _bottleneckThreshold = Math.Max(1, settings.bottleneckThreshold);
             _bottleneckHysteresis = Math.Max(TimeEpsilon, settings.bottleneckHysteresis);
             _nextStateCheck = StateCheckInterval;
+            _rushUnits = Math.Max(1, settings.suddenRushUnits);
+            _rushDuration = Math.Max(TimeEpsilon, settings.suddenRushDuration);
+            _pickRushNeed = pickRushNeed;
+            _buildingForNeed = buildingForNeed;
+            ScheduledRushTime = pickRushNeed != null ? Math.Max(0, settings.suddenRushTime) : double.PositiveInfinity;
             WaveIndex = forecast.WaveIndex;
             GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
@@ -92,6 +114,18 @@ namespace ResortEmpire.Core
 
         /// <summary>OUR-38 / OUR-39: a need changed state (need, from, to).</summary>
         public event Action<NeedId, NeedState, NeedState> StateChanged;
+
+        /// <summary>Sudden rush: it started (at <see cref="SuddenRush.StartTime"/>).</summary>
+        public event Action<SuddenRush> SuddenRushStarted;
+
+        /// <summary>Sudden rush: when it is due (infinity when this wave has none or it already started).</summary>
+        public double ScheduledRushTime { get; private set; }
+
+        /// <summary>Whether this wave was created with a Sudden rush (it may not have started yet).</summary>
+        public bool HasRushPlanned => _pickRushNeed != null;
+
+        /// <summary>Sudden rush once it has started; null before, or when the wave has none.</summary>
+        public SuddenRush SuddenRush { get; private set; }
 
         /// <summary>
         /// OUR-38 / OUR-39: the need's state. <see cref="NeedState.Locked"/> for a need that isn't in this wave
@@ -241,7 +275,7 @@ namespace ResortEmpire.Core
             // 0.25 s grid of wave time.
             while (true)
             {
-                double next = Math.Min(waveTime, _nextStateCheck);
+                double next = Math.Min(Math.Min(waveTime, _nextStateCheck), ScheduledRushTime);
                 foreach (NeedQueue need in _needList)
                 {
                     next = Math.Min(next, need.NextEventTime(Time));
@@ -253,6 +287,14 @@ namespace ResortEmpire.Core
                 bool any = false;
                 foreach (NeedQueue need in _needList) any |= need.ProcessDueEvents(Time);
 
+                // Sudden rush: after this moment's arrivals and service ends.
+                if (Time >= ScheduledRushTime - TimeEpsilon)
+                {
+                    ScheduledRushTime = double.PositiveInfinity;
+                    StartRush();
+                    any = true;
+                }
+
                 bool gridCheck = Time >= _nextStateCheck - TimeEpsilon;
                 if (gridCheck) _nextStateCheck += StateCheckInterval;
                 if (any || gridCheck) CheckStates();
@@ -261,6 +303,24 @@ namespace ResortEmpire.Core
             }
 
             Time = waveTime;
+        }
+
+        /// <summary>
+        /// Sudden rush: adds <see cref="WaveSettings.suddenRushUnits"/> units to the need whose building has no Worker,
+        /// arriving evenly over the next <see cref="WaveSettings.suddenRushDuration"/> seconds (Build doc §4.6).
+        /// </summary>
+        private void StartRush()
+        {
+            NeedId? need = _pickRushNeed?.Invoke();
+            if (need == null || !_needs.TryGetValue(need.Value, out NeedQueue target)) return;
+
+            var times = new double[_rushUnits];
+            for (int i = 0; i < _rushUnits; i++) times[i] = Time + (i + 1) * _rushDuration / _rushUnits;
+            target.AddUnits(times);
+
+            BuildingId building = _buildingForNeed != null ? _buildingForNeed(target.Need) : default;
+            SuddenRush = new SuddenRush(target.Need, building, Time, _rushUnits, _rushDuration);
+            SuddenRushStarted?.Invoke(SuddenRush);
         }
 
         private void ReadSpeeds()
@@ -345,16 +405,32 @@ namespace ResortEmpire.Core
                 Need = need;
                 Total = Math.Max(0, total);
                 Seats = Math.Max(0, seats);
-                ArrivalTimes = new double[Total];
                 for (int k = 0; k < Total; k++)
                 {
                     // Steady rate demand ÷ waveTimer: unit k arrives at (k + 1) × waveTimer ÷ demand.
-                    ArrivalTimes[k] = (k + 1) * waveTimer / Total;
+                    ArrivalTimes.Add((k + 1) * waveTimer / Total);
                 }
             }
 
             public NeedId Need { get; }
-            public int Total { get; }
+
+            /// <summary>Units of the wave, plus a Sudden rush's extra ones once it started.</summary>
+            public int Total { get; private set; }
+
+            /// <summary>
+            /// Sudden rush: extra units arriving at <paramref name="times"/> (all later than now). Merged into the
+            /// schedule so it stays in time order; units already here keep their place.
+            /// </summary>
+            public void AddUnits(IReadOnlyList<double> times)
+            {
+                foreach (double time in times)
+                {
+                    int index = Arrived;
+                    while (index < ArrivalTimes.Count && ArrivalTimes[index] <= time) index++;
+                    ArrivalTimes.Insert(index, time);
+                    Total++;
+                }
+            }
             public int Seats { get; }
 
             /// <summary>OUR-38 / OUR-39: the need's state (Build doc §4.4).</summary>
@@ -389,7 +465,7 @@ namespace ResortEmpire.Core
 
                 return waiting;
             }
-            public double[] ArrivalTimes { get; }
+            public List<double> ArrivalTimes { get; } = new List<double>();
             public int Arrived { get; private set; }
             public int Seated => _remaining.Count;
             public int Served { get; private set; }

@@ -22,6 +22,15 @@ namespace ResortEmpire.Core
             else
             {
                 if (config.wave.waveTimer < 1f) errors.Add($"Wave timer must be at least 1 s (is {config.wave.waveTimer}).");
+                if (config.wave.suddenRushEnabled)
+                {
+                    if (config.wave.suddenRushTime >= config.wave.waveTimer) errors.Add($"Sudden rush: suddenRushTime ({config.wave.suddenRushTime}) must be before waveTimer ({config.wave.waveTimer}), inside the arrivals (Build doc §4.9).");
+                    if (config.wave.suddenRushWave < 1) errors.Add($"Sudden rush: suddenRushWave must be at least 1 (is {config.wave.suddenRushWave}).");
+                    if (config.wave.suddenRushChance < 0f || config.wave.suddenRushChance > 1f) errors.Add($"Sudden rush: suddenRushChance must be between 0 and 1 (is {config.wave.suddenRushChance}).");
+                    if (config.wave.suddenRushUnits < 1) errors.Add($"Sudden rush: suddenRushUnits must be at least 1 (is {config.wave.suddenRushUnits}).");
+                    if (config.wave.suddenRushDuration <= 0f) errors.Add($"Sudden rush: suddenRushDuration must be above 0 s (is {config.wave.suddenRushDuration}).");
+                }
+
                 if (config.wave.bottleneckThreshold < 1) errors.Add($"bottleneckThreshold must be at least 1 (is {config.wave.bottleneckThreshold}).");
                 if (config.wave.bottleneckHysteresis <= 0f) errors.Add($"bottleneckHysteresis must be above 0 s (is {config.wave.bottleneckHysteresis}).");
                 if (config.wave.serviceTime <= 0f) errors.Add($"Service time must be above 0 s (is {config.wave.serviceTime}).");

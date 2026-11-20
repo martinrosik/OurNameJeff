@@ -44,6 +44,7 @@ namespace ResortEmpire.UI
         private NeedsPanelView _needs;
         private WorkerAllocationView _workers;
         private StateToastView _stateToast;
+        private SuddenRushPromptView _suddenRush;
         private WaveCompleteView _waveComplete;
         private IslandView _island;
 
@@ -52,6 +53,7 @@ namespace ResortEmpire.UI
         internal NeedsPanelView Needs => _needs;
         internal WorkerAllocationView Workers => _workers;
         internal StateToastView StateToast => _stateToast;
+        internal SuddenRushPromptView SuddenRush => _suddenRush;
         internal WaveCompleteView WaveComplete => _waveComplete;
         internal ResortGame Game => _game;
 
@@ -129,6 +131,7 @@ namespace ResortEmpire.UI
             _hud.Refresh(_game);
             _settings.Refresh(_game);
             _needs.Refresh(_game);
+            _suddenRush.Refresh(_game);
             _stateToast.Refresh(_game);
             _workers.Refresh(_game);
             _waveComplete.Refresh(_game);
@@ -217,6 +220,7 @@ namespace ResortEmpire.UI
 
             _hud = new HudView(this, safe, SideArea, IslandArea);
             _needs = new NeedsPanelView(this, SideArea);
+            _suddenRush = new SuddenRushPromptView(this, SideArea); // over the needs panel
             _stateToast = new StateToastView(IslandArea); // OUR-38 / OUR-39
             _settings = new SettingsView(this, safe, settingsIcon); // its menu moves to the front when it opens
             _workers = new WorkerAllocationView(this, safe); // last, so it draws over the HUD

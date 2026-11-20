@@ -76,7 +76,7 @@ namespace ResortEmpire.Game
         /// <summary>Starts over from the config's starting state.</summary>
         public void NewGame()
         {
-            Game = new ResortGame(config);
+            Game = new ResortGame(config, new System.Random()); // decides which later waves get a Sudden rush
             IsResumed = false;
             GameCreated?.Invoke(Game);
         }

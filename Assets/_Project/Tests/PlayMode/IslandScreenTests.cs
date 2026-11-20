@@ -22,6 +22,8 @@ namespace ResortEmpire.Tests
         private IslandView _island;
 
         private float _savedServiceTime;
+        private bool _savedSuddenRush;
+        private int _savedSuddenRushWave;
 
         private ResortGame Game => _controller.Game;
 
@@ -54,12 +56,21 @@ namespace ResortEmpire.Tests
             Assert.IsNotNull(_island, "Game scene has no IslandView.");
             _controller.SimulationSpeed = 0f; // tests drive time themselves
             _savedServiceTime = Game.Config.wave.serviceTime;
+
+            // A Sudden rush adds guests; tests that count arrivals need the plain wave. The Sudden rush tests turn it
+            // back on. The config is the real asset, so TearDown restores the values.
+            _savedSuddenRush = Game.Config.wave.suddenRushEnabled;
+            _savedSuddenRushWave = Game.Config.wave.suddenRushWave;
+            Game.Config.wave.suddenRushEnabled = false;
         }
 
         [TearDown]
         public void RestoreServiceTime()
         {
-            if (_controller != null) _controller.Game.Config.wave.serviceTime = _savedServiceTime;
+            if (_controller == null) return;
+            _controller.Game.Config.wave.serviceTime = _savedServiceTime;
+            _controller.Game.Config.wave.suddenRushEnabled = _savedSuddenRush;
+            _controller.Game.Config.wave.suddenRushWave = _savedSuddenRushWave;
         }
 
         [UnityTest]
@@ -810,6 +821,60 @@ namespace ResortEmpire.Tests
             Assert.IsFalse(_ui.WaveComplete.IsVisible);
             Assert.IsTrue(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Welcome Guests is back.");
             Assert.IsFalse(Game.GetBuilding(BuildingId.Restaurant).HasWorker, "Workers start where the config puts them.");
+        }
+
+        /// <summary>Starts wave 1 with a Sudden rush (as wave 2 would have) and plays it to just after 45 s.</summary>
+        private IEnumerator StartWaveWithSuddenRush()
+        {
+            Game.Config.wave.suddenRushEnabled = true;
+            Game.Config.wave.suddenRushWave = 1;
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+            for (int i = 0; i < 46; i++) Game.Tick(1);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator SuddenRush_ThePanelAsksToMoveAWorkerToTheBuildingWithoutOne()
+        {
+            yield return StartWaveWithSuddenRush();
+
+            SuddenRush rush = Game.CurrentWave.SuddenRush;
+            Assert.IsNotNull(rush);
+            Assert.AreEqual(BuildingId.Restaurant, rush.Building, "The Restaurant has no Worker.");
+            Assert.AreEqual(12, Game.GetNeedStatus(NeedId.Food).Total, "Food 6 + 6 extra guests.");
+            Assert.AreEqual(GamePhase.WaveActive, Game.Phase, "The wave doesn't pause.");
+
+            SuddenRushPromptView prompt = _ui.SuddenRush;
+            Assert.IsTrue(prompt.IsVisible);
+            Assert.AreEqual("Sudden rush at Restaurant!", prompt.Title);
+            Assert.AreEqual("+6 guests want Food, and the Restaurant has no Worker.", prompt.Detail);
+
+            prompt.MoveWorkerButton.onClick.Invoke();
+            yield return null;
+            Assert.IsTrue(_ui.Workers.IsOpen, "Move Worker here opens Worker Allocation for the Restaurant.");
+
+            Assert.AreEqual(WorkerMoveResult.Moved, Game.MoveWorker(BuildingId.Reception, BuildingId.Restaurant));
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible, "A Worker is there now: the prompt goes away.");
+        }
+
+        [UnityTest]
+        public IEnumerator SuddenRush_IgnoreClosesThePromptAndTheGuestsStillCome()
+        {
+            yield return StartWaveWithSuddenRush();
+            SuddenRushPromptView prompt = _ui.SuddenRush;
+            Assert.IsTrue(prompt.IsVisible);
+
+            prompt.IgnoreButton.onClick.Invoke();
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible);
+
+            for (int i = 0; i < 10; i++) Game.Tick(1);
+            yield return null;
+            Assert.IsFalse(prompt.IsVisible, "It doesn't come back.");
+            Assert.AreEqual(12, Game.GetNeedStatus(NeedId.Food).Total, "The extra guests come anyway (Build doc §4.9).");
+            Assert.GreaterOrEqual(Game.GetNeedStatus(NeedId.Food).Arrived, 3 + 6, "3 steady Food guests by 45 s, then all 6 extra ones by 55 s.");
         }
     }
 }
