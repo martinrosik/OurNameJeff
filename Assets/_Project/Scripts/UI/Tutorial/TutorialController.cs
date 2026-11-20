@@ -14,7 +14,8 @@ namespace ResortEmpire.UI
     /// <item>while a step asks for one thing, lets only that work: the building it points at opens its Worker sheet
     /// (others shake the bubble), and Welcome Guests waits until the Worker move is done;</item>
     /// <item>at the end, START MY RESORT (on Wave Complete) or SKIP TUTORIAL remembers the tutorial as done
-    /// (<see cref="TutorialProgress"/>) and opens the Game scene at the real wave 1.</item>
+    /// (<see cref="TutorialProgress"/>) and opens the Game scene: at the real wave 1, or, when the player replayed the
+    /// tutorial from the settings, back in their own game exactly as they left it (BACK TO MY RESORT, <see cref="ParkedGame"/>).</item>
     /// </list>
     /// Runs after GameController (Awake) and GreyboxUI (Start, LateUpdate), so the views it points at exist and are
     /// up to date.
@@ -35,6 +36,7 @@ namespace ResortEmpire.UI
         private TutorialScript _script;
         private TutorialView _view;
         private bool _leaving;
+        private bool _isReplay;
 
         internal TutorialScript Script => _script;
         internal TutorialView View => _view;
@@ -58,8 +60,11 @@ namespace ResortEmpire.UI
 
         private void Start()
         {
-            ui.HowToPlayAvailable = false;
-            ui.OverrideContinue(GameText.TutorialFinishLabel, Finish);
+            ui.SettingsAvailable = false; // SKIP TUTORIAL takes that corner here
+
+            // Replayed from the settings: the player's own game waits in ParkedGame, and the way out leads back to it.
+            _isReplay = ParkedGame.HasGame;
+            ui.OverrideContinue(_isReplay ? GameText.TutorialBackLabel : GameText.TutorialFinishLabel, Finish);
             _script = new TutorialScript(controller.Game);
             _view = new TutorialView(transform, arrowSprite, frameSprite, hostSprite, Next, Skip);
 
@@ -219,7 +224,7 @@ namespace ResortEmpire.UI
                     break;
                 case TutorialStep.Result:
                     bubble.Title = GameText.TutorialResultTitle;
-                    bubble.Body = GameText.TutorialResult;
+                    bubble.Body = _isReplay ? GameText.TutorialResultReplay : GameText.TutorialResult;
                     bubble.Target = ui.WaveComplete.IsVisible ? UIRect(ui.WaveComplete.Stars) : null;
                     AddIfShown(bubble.Avoid, ui.WaveComplete.Card);
                     break;

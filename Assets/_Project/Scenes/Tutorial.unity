@@ -1302,6 +1302,56 @@ MeshRenderer:
   m_SortingOrder: 10
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &573128519
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 573128521}
+  - component: {fileID: 573128520}
+  m_Layer: 0
+  m_Name: Tutorial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &573128520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 573128519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bd4f33086189d64e8555b2e96e78708, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.UI::ResortEmpire.UI.TutorialController
+  controller: {fileID: 1857858098}
+  ui: {fileID: 1367210588}
+  tutorial: {fileID: 11400000, guid: 24a2348c5e2d06d4b853187c3881a73c, type: 2}
+  arrowSprite: {fileID: 21300000, guid: 6cf1eb34edc204e458d1b81a0c2f675a, type: 3}
+  frameSprite: {fileID: 21300000, guid: ec38728df3f47964e90e8dc6de7ef60f, type: 3}
+  hostSprite: {fileID: -126569790, guid: 4797779dcc7e7104fb82a4ea85c18081, type: 3}
+--- !u!4 &573128521
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 573128519}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &645794141
 GameObject:
   m_ObjectHideFlags: 0
@@ -3461,6 +3511,7 @@ MonoBehaviour:
   roomsIcon: {fileID: 21300000, guid: a8769e0779384594a8323eaeb539376e, type: 3}
   drinksIcon: {fileID: 21300000, guid: 0ded291f869be4345824b3351b5ce3c7, type: 3}
   foodIcon: {fileID: 21300000, guid: 951f3067efdb2c145bf0b5a7f228f4fb, type: 3}
+  settingsIcon: {fileID: 21300000, guid: c8fb501030682eb42af1cdbe04eaba14, type: 3}
 --- !u!4 &1367210589
 Transform:
   m_ObjectHideFlags: 0
@@ -5099,56 +5150,6 @@ Transform:
   - {fileID: 2145773285}
   m_Father: {fileID: 1532353616}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1996851802
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1996851804}
-  - component: {fileID: 1996851803}
-  m_Layer: 0
-  m_Name: Tutorial
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1996851803
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1996851802}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7bd4f33086189d64e8555b2e96e78708, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: ResortEmpire.UI::ResortEmpire.UI.TutorialController
-  controller: {fileID: 1857858098}
-  ui: {fileID: 1367210588}
-  tutorial: {fileID: 11400000, guid: 24a2348c5e2d06d4b853187c3881a73c, type: 2}
-  arrowSprite: {fileID: 21300000, guid: 6cf1eb34edc204e458d1b81a0c2f675a, type: 3}
-  frameSprite: {fileID: 21300000, guid: ec38728df3f47964e90e8dc6de7ef60f, type: 3}
-  hostSprite: {fileID: -126569790, guid: 4797779dcc7e7104fb82a4ea85c18081, type: 3}
---- !u!4 &1996851804
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1996851802}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2008244311
 GameObject:
   m_ObjectHideFlags: 0
@@ -5728,4 +5729,4 @@ SceneRoots:
   - {fileID: 1857858099}
   - {fileID: 1858474681}
   - {fileID: 1367210589}
-  - {fileID: 1996851804}
+  - {fileID: 573128521}

@@ -3461,6 +3461,7 @@ MonoBehaviour:
   roomsIcon: {fileID: 21300000, guid: a8769e0779384594a8323eaeb539376e, type: 3}
   drinksIcon: {fileID: 21300000, guid: 0ded291f869be4345824b3351b5ce3c7, type: 3}
   foodIcon: {fileID: 21300000, guid: 951f3067efdb2c145bf0b5a7f228f4fb, type: 3}
+  settingsIcon: {fileID: 21300000, guid: c8fb501030682eb42af1cdbe04eaba14, type: 3}
 --- !u!4 &1367210589
 Transform:
   m_ObjectHideFlags: 0

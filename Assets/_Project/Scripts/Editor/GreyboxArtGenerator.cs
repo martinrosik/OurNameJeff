@@ -10,6 +10,7 @@ namespace ResortEmpire.Editor
     /// a square, a circle and a 9-sliced rounded rectangle. Replaced by real art in the Figma/art pass.
     /// Wave evaluation: also a five-pointed star for the rating on Wave Complete.
     /// Tutorial: a curved arrow and a 9-sliced outline frame (<see cref="GenerateTutorialSprites"/>).
+    /// Settings: a gear for the settings button (<see cref="GenerateSettingsIcon"/>).
     /// </summary>
     public static class GreyboxArtGenerator
     {
@@ -69,6 +70,52 @@ namespace ResortEmpire.Editor
             int border = TutorialArt.FrameCornerRadius + 2;
             Configure(TutorialArrowPath, Vector4.zero, TutorialArt.ArrowWidth);
             Configure(TutorialFramePath, new Vector4(border, border, border, border), TutorialArt.FrameSize);
+        }
+
+        // Settings: the gear on the top-right button (the UI font has no gear glyph).
+        public const string SettingsIconPath = Folder + "/Greybox_Settings.png";
+        private const int GearSize = 128;
+        private const int GearTeeth = 8;
+        private const int GearSamples = 4;
+
+        public static Sprite SettingsIcon => AssetDatabase.LoadAssetAtPath<Sprite>(SettingsIconPath);
+
+        /// <summary>Draws the settings gear, leaving the other sprites as they are.</summary>
+        [MenuItem("Resort Empire/Greybox/Generate Settings Icon", priority = 303)]
+        public static void GenerateSettingsIcon()
+        {
+            Directory.CreateDirectory(Folder);
+            Write(SettingsIconPath, GearCoverage, GearSize);
+            AssetDatabase.Refresh();
+            Configure(SettingsIconPath, Vector4.zero, GearSize);
+        }
+
+        /// <summary>A gear, one tooth pointing up: a disc with <see cref="GearTeeth"/> teeth and a round hole, anti-aliased by supersampling.</summary>
+        private static float GearCoverage(int x, int y)
+        {
+            float centre = GearSize * 0.5f;
+            float tip = centre - 3f;
+            float root = tip * 0.74f;
+            float hole = tip * 0.3f;
+
+            int inside = 0;
+            for (int sy = 0; sy < GearSamples; sy++)
+            {
+                for (int sx = 0; sx < GearSamples; sx++)
+                {
+                    var point = new Vector2(x + (sx + 0.5f) / GearSamples - centre, y + (sy + 0.5f) / GearSamples - centre);
+                    float distance = point.magnitude;
+                    if (distance < hole) continue;
+
+                    // 0 in the middle of a tooth, 1 in the middle of a gap; flat tops, sloped flanks.
+                    float phase = Mathf.Repeat(Mathf.Atan2(point.y, point.x) / (2f * Mathf.PI) * GearTeeth + 0.5f, 1f);
+                    float fromToothCentre = Mathf.Abs(phase - 0.5f) * 2f;
+                    float tooth = 1f - Mathf.InverseLerp(0.36f, 0.62f, fromToothCentre);
+                    if (distance <= Mathf.Lerp(root, tip, tooth)) inside++;
+                }
+            }
+
+            return inside / (float)(GearSamples * GearSamples);
         }
 
         /// <summary>The curve (a thick quadratic Bézier with a round tail) plus the head, anti-aliased by supersampling.</summary>

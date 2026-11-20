@@ -51,6 +51,11 @@ namespace ResortEmpire.Editor
                 GreyboxArtGenerator.Generate();
             }
 
+            if (GreyboxArtGenerator.SettingsIcon == null)
+            {
+                GreyboxArtGenerator.GenerateSettingsIcon();
+            }
+
             if (string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(PrototypeConfigDefaults.AssetPath, AssetPathToGUIDOptions.OnlyExistingAssets)))
             {
                 Debug.LogError($"Missing {PrototypeConfigDefaults.AssetPath}. Use Resort Empire/Config/Create Prototype Config first.");
@@ -92,6 +97,7 @@ namespace ResortEmpire.Editor
             SetReference(ui, "roomsIcon", LoadNeedIcon(NeedId.Rooms));
             SetReference(ui, "drinksIcon", LoadNeedIcon(NeedId.Drinks));
             SetReference(ui, "foodIcon", LoadNeedIcon(NeedId.Food));
+            SetReference(ui, "settingsIcon", GreyboxArtGenerator.SettingsIcon);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);

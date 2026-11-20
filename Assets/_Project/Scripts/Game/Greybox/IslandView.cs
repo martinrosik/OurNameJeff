@@ -23,6 +23,15 @@ namespace ResortEmpire.Game
             _buildings = GetComponentsInChildren<BuildingView>(true);
         }
 
+        private void Start()
+        {
+            // Back from the tutorial in the middle of a wave: the guests who had stepped off go straight to where they were.
+            if (controller != null && controller.IsResumed && controller.Game != null && guests != null)
+            {
+                guests.CatchUp(controller.Game, this);
+            }
+        }
+
         private void LateUpdate() => Refresh();
 
         /// <summary>Updates every view from the game; once per frame, or directly from tests.</summary>
