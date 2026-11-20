@@ -62,5 +62,23 @@ namespace ResortEmpire.Game
             Game = new ResortGame(config);
             GameCreated?.Invoke(Game);
         }
+
+        /// <summary>
+        /// Starts over on another config, e.g. the tutorial's practice wave. A config with problems is refused (logged),
+        /// and the current game goes on.
+        /// </summary>
+        public bool NewGame(GameConfig newConfig)
+        {
+            List<string> errors = GameConfigValidator.Validate(newConfig);
+            if (errors.Count > 0)
+            {
+                Debug.LogError($"GameConfig {(newConfig != null ? newConfig.name : "(none)")} has problems, so the game doesn't switch to it:\n- {string.Join("\n- ", errors)}", this);
+                return false;
+            }
+
+            config = newConfig;
+            NewGame();
+            return true;
+        }
     }
 }

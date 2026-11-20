@@ -1,4 +1,5 @@
 using System.IO;
+using ResortEmpire.UI;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,6 +9,7 @@ namespace ResortEmpire.Editor
     /// Creates the white placeholder sprites the greybox tints at runtime:
     /// a square, a circle and a 9-sliced rounded rectangle. Replaced by real art in the Figma/art pass.
     /// Wave evaluation: also a five-pointed star for the rating on Wave Complete.
+    /// Tutorial: a curved arrow and a 9-sliced outline frame (<see cref="GenerateTutorialSprites"/>).
     /// </summary>
     public static class GreyboxArtGenerator
     {
@@ -47,13 +49,99 @@ namespace ResortEmpire.Editor
         public static Sprite Circle => AssetDatabase.LoadAssetAtPath<Sprite>(CirclePath);
         public static Sprite Rounded => AssetDatabase.LoadAssetAtPath<Sprite>(RoundedPath);
         public static Sprite Star => AssetDatabase.LoadAssetAtPath<Sprite>(StarPath);
+        public static Sprite TutorialArrow => AssetDatabase.LoadAssetAtPath<Sprite>(TutorialArrowPath);
+        public static Sprite TutorialFrame => AssetDatabase.LoadAssetAtPath<Sprite>(TutorialFramePath);
 
-        private static void Write(string path, System.Func<int, int, float> alpha, int size = Size)
+        // Tutorial: the curved arrow from a bubble to its target, and the outline frame around the target.
+        public const string TutorialArrowPath = Folder + "/Greybox_TutorialArrow.png";
+        public const string TutorialFramePath = Folder + "/Greybox_TutorialFrame.png";
+        private const int ArrowSamples = 3;
+
+        /// <summary>Draws the tutorial's arrow and frame (shapes from <see cref="TutorialArt"/>), leaving the other sprites as they are.</summary>
+        [MenuItem("Resort Empire/Greybox/Generate Tutorial Sprites", priority = 302)]
+        public static void GenerateTutorialSprites()
         {
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            for (int y = 0; y < size; y++)
+            Directory.CreateDirectory(Folder);
+            Write(TutorialArrowPath, ArrowCoverage, TutorialArt.ArrowWidth, TutorialArt.ArrowHeight);
+            Write(TutorialFramePath, FrameCoverage, TutorialArt.FrameSize);
+            AssetDatabase.Refresh();
+
+            int border = TutorialArt.FrameCornerRadius + 2;
+            Configure(TutorialArrowPath, Vector4.zero, TutorialArt.ArrowWidth);
+            Configure(TutorialFramePath, new Vector4(border, border, border, border), TutorialArt.FrameSize);
+        }
+
+        /// <summary>The curve (a thick quadratic Bézier with a round tail) plus the head, anti-aliased by supersampling.</summary>
+        private static float ArrowCoverage(int x, int y)
+        {
+            Vector2 direction = TutorialArt.ArrowHeadDirection;
+            var normal = new Vector2(-direction.y, direction.x);
+            Vector2 tip = TutorialArt.ArrowTip;
+            Vector2 back = TutorialArt.ArrowEnd - direction * TutorialArt.ArrowHeadBack;
+            Vector2[] head =
             {
-                for (int x = 0; x < size; x++)
+                tip,
+                back + normal * TutorialArt.ArrowHeadHalfWidth,
+                back - normal * TutorialArt.ArrowHeadHalfWidth,
+            };
+
+            int inside = 0;
+            for (int sy = 0; sy < ArrowSamples; sy++)
+            {
+                for (int sx = 0; sx < ArrowSamples; sx++)
+                {
+                    var point = new Vector2(x + (sx + 0.5f) / ArrowSamples, y + (sy + 0.5f) / ArrowSamples);
+                    if (IsInsidePolygon(point, head) || DistanceToCurve(point) <= TutorialArt.ArrowStrokeRadius) inside++;
+                }
+            }
+
+            return inside / (float)(ArrowSamples * ArrowSamples);
+        }
+
+        private static float DistanceToCurve(Vector2 point)
+        {
+            const int Segments = 48;
+            float best = float.MaxValue;
+            Vector2 previous = TutorialArt.ArrowStart;
+            for (int i = 1; i <= Segments; i++)
+            {
+                float t = i / (float)Segments;
+                Vector2 next = (1 - t) * (1 - t) * TutorialArt.ArrowStart + 2 * (1 - t) * t * TutorialArt.ArrowControl + t * t * TutorialArt.ArrowEnd;
+                best = Mathf.Min(best, DistanceToSegment(point, previous, next));
+                previous = next;
+            }
+
+            return best;
+        }
+
+        private static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / ab.sqrMagnitude);
+            return Vector2.Distance(point, a + ab * t);
+        }
+
+        /// <summary>A rounded rectangle's outline, for a 9-sliced frame.</summary>
+        private static float FrameCoverage(int x, int y)
+        {
+            float size = TutorialArt.FrameSize;
+            float radius = TutorialArt.FrameCornerRadius;
+            float cx = Mathf.Clamp(x + 0.5f, radius, size - radius);
+            float cy = Mathf.Clamp(y + 0.5f, radius, size - radius);
+            float distance = Distance(x, y, cx, cy);
+            float outer = Coverage(distance, radius);
+            float inner = Coverage(distance, radius - TutorialArt.FrameThickness);
+            return outer - inner;
+        }
+
+        private static void Write(string path, System.Func<int, int, float> alpha, int size = Size) => Write(path, alpha, size, size);
+
+        private static void Write(string path, System.Func<int, int, float> alpha, int width, int height)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
                 {
                     texture.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(alpha(x, y))));
                 }

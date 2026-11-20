@@ -49,6 +49,8 @@ namespace ResortEmpire.UI
 
         public bool IsShown => _root.gameObject.activeSelf;
 
+        public RectTransform Root => _root;
+
         /// <summary>How many stars are gold right now (0 while hidden).</summary>
         public int EarnedCount => IsShown ? _earned : 0;
 

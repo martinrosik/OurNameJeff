@@ -81,6 +81,10 @@ namespace ResortEmpire.UI
         public string SatisfactionText => _satisfactionRow.IsShown ? _satisfactionRow.Value : string.Empty;
         public Button ContinueButton => _continue;
 
+        /// <summary>Tutorial: the card, and the rating stars on it, for the bubble that explains them.</summary>
+        public RectTransform Card => _card;
+        public RectTransform Stars => _stars.Root;
+
         public void Refresh(ResortGame game)
         {
             bool isWaveComplete = game.Phase == GamePhase.WaveComplete;
@@ -95,7 +99,7 @@ namespace ResortEmpire.UI
         {
             _title.text = GameText.WaveCompleteTitle(result.WaveNumber);
             _message.text = GameText.WaveCompleteMessage(result);
-            _continue.SetLabel(GameText.ContinueLabel);
+            _continue.SetLabel(_owner.ContinueLabelOverride ?? GameText.ContinueLabel);
 
             // Perfect is a sixth tier above five stars: it shows all five plus the PERFECT! label.
             int earnedStars = Math.Min((int)result.Rating, RatingStarsView.StarCount);

@@ -12,7 +12,8 @@ namespace ResortEmpire.UI
     /// <list type="bullet">
     /// <item>resort status in the top bar ("READY FOR GUESTS", "BOAT ARRIVING", "WAVE 1 IN PROGRESS");</item>
     /// <item><b>OUR-33</b>: the next-wave forecast on the side panel before the wave, with which buildings have a Worker;</item>
-    /// <item><b>OUR-27</b>: Welcome Guests starts the wave manually.</item>
+    /// <item><b>OUR-27</b>: Welcome Guests starts the wave manually;</item>
+    /// <item>tutorial: HOW TO PLAY in the top bar before the first wave opens the Tutorial scene.</item>
     /// </list>
     /// Currencies (Coins, Energy, Resort Value) join the top bar in a later sprint; leave room on the right.
     /// </summary>
@@ -31,6 +32,7 @@ namespace ResortEmpire.UI
         private readonly TextMeshProUGUI _note;
         private readonly Button _startWave;
         private readonly TextMeshProUGUI _hint;
+        private readonly Button _howToPlay;
 
         public HudView(GreyboxUI owner, RectTransform root, RectTransform sideArea, RectTransform islandArea)
         {
@@ -49,6 +51,10 @@ namespace ResortEmpire.UI
             accent.rectTransform.At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(6f, 0f), new Vector2(8f, 16f));
             _status = UIFactory.Text("Label", pill.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
             _status.rectTransform.Fill(20, 8, 0, 0);
+
+            // Tutorial: right of the status pill, where the state toast sits during the wave (it shows only before one).
+            _howToPlay = UIFactory.Button("HowToPlayButton", topBar, GameText.HowToPlayLabel, UIFactory.Paper, GreyboxPalette.Primary, 12, OnHowToPlay);
+            ((RectTransform)_howToPlay.transform).At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(238f, 0f), new Vector2(112f, 28f));
 
             Image panel = UIFactory.SidePanel("ForecastPanel", sideArea);
             _forecastPanel = panel.gameObject;
@@ -83,6 +89,8 @@ namespace ResortEmpire.UI
         }
 
         public Button StartWaveButton => _startWave;
+        public Button HowToPlayButton => _howToPlay;
+        public RectTransform ForecastPanel => (RectTransform)_forecastPanel.transform;
         public bool ForecastVisible => _forecastPanel.activeSelf;
         public string StatusText => _status.text;
 
@@ -110,7 +118,11 @@ namespace ResortEmpire.UI
             bool awaiting = game.Phase == GamePhase.AwaitingWave;
             _forecastPanel.SetActive(awaiting);
             _startWave.gameObject.SetActive(awaiting && game.HasNextWave);
+            _startWave.interactable = _owner.IsWaveStartAllowed; // greyed while the tutorial waits for a Worker move
             _hint.gameObject.SetActive(awaiting && game.HasNextWave);
+
+            // Only before the first wave: there's no save yet, so opening the tutorial later would lose the waves played.
+            _howToPlay.gameObject.SetActive(awaiting && game.CompletedWaves == 0 && _owner.HowToPlayAvailable);
 
             if (awaiting)
             {
@@ -167,5 +179,7 @@ namespace ResortEmpire.UI
         }
 
         private void OnStartWave() => _owner.StartWave();
+
+        private void OnHowToPlay() => _owner.OpenTutorial();
     }
 }

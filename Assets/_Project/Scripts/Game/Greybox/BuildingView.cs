@@ -79,6 +79,22 @@ namespace ResortEmpire.Game
 
         public string StatusText => statusLabel != null ? statusLabel.text : string.Empty;
 
+        /// <summary>Tutorial: where the Worker badge is, in world space (null when the building has no badge).</summary>
+        public Bounds? WorkerBadgeBounds => workerBadge != null ? workerBadge.bounds : (Bounds?)null;
+
+        /// <summary>Tutorial: the building's art and patio plate in world space, the part a tap hits.</summary>
+        public Bounds GetBounds()
+        {
+            var bounds = new Bounds(transform.position, Vector3.zero);
+            if (body != null) bounds.Encapsulate(body.bounds);
+            foreach (SpriteRenderer sprite in art)
+            {
+                if (sprite != null) bounds.Encapsulate(sprite.bounds);
+            }
+
+            return bounds;
+        }
+
         /// <summary>OUR-45: whether a world point is on the building (its art or patio plate), for taps.</summary>
         public bool Contains(Vector2 worldPoint)
         {

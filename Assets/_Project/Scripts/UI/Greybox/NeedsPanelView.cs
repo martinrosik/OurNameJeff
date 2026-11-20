@@ -51,6 +51,7 @@ namespace ResortEmpire.UI
         }
 
         public bool IsVisible => _panel.activeSelf;
+        public RectTransform Panel => (RectTransform)_panel.transform;
         public string TitleText => _title.text;
         public string ArrivalsText => _arrivals.text;
         public IReadOnlyList<NeedRowView> Rows => _rows;
