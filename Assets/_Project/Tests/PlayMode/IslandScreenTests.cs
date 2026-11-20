@@ -263,6 +263,32 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator AGuestWalkingOutShowsAMoodBubbleForAMoment()
+        {
+            GuestCrowdView guests = _island.Guests;
+
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration + 11.3); // Rooms unit 0 finds a free seat at 11.25 s
+            yield return null;
+            guests.FastForward(20f);
+            yield return null;
+            Assert.IsEmpty(guests.GetShownMoods(), "No bubble while the guest is inside.");
+
+            Game.CurrentWave.FinishService(NeedId.Rooms);
+            yield return null;
+            guests.FastForward(0.1f);
+
+            CollectionAssert.AreEqual(new[] { GuestMood.Happy }, guests.GetShownMoods(),
+                "It sat down at once, so it walks out smiling.");
+            SpriteRenderer bubble = guests.GetComponentsInChildren<SpriteRenderer>().Single(r => r.name == "MoodBubble");
+            Assert.AreEqual(MoodBubbleArt.Get(GuestMood.Happy), bubble.sprite, "The bubble shows the smiling face.");
+
+            guests.FastForward(3f);
+            yield return null;
+            Assert.IsEmpty(guests.GetShownMoods(), "The bubble goes away after a moment.");
+        }
+
+        [UnityTest]
         public IEnumerator EveryGuestGoesToItsFirstBuildingAndWaitsToBeServed()
         {
             GuestCrowdView guests = _island.Guests;

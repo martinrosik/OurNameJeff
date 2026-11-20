@@ -27,6 +27,17 @@ namespace ResortEmpire.Core
             return 100.0 - falloff * (100.0 - settings.unitFloor);
         }
 
+        /// <summary>
+        /// Guest mood bubbles: the face a guest shows for one visit, from the same wait and the same thresholds as its
+        /// contribution: full marks up to patienceGrace, the floor from patienceFloorAfter, neutral in between.
+        /// </summary>
+        public static GuestMood GetGuestMood(double waitSeconds, SatisfactionSettings settings)
+        {
+            if (waitSeconds <= settings.patienceGrace + Tolerance) return GuestMood.Happy;
+            if (waitSeconds >= settings.patienceFloorAfter - Tolerance) return GuestMood.Unhappy;
+            return GuestMood.Neutral;
+        }
+
         /// <summary>Wave Satisfaction in % (waveFloor–100) of every unit seated so far in <paramref name="wave"/>.</summary>
         public static double Calculate(WaveSimulation wave, SatisfactionSettings settings)
         {
