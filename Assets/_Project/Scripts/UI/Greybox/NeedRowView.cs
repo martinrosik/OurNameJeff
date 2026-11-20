@@ -1,3 +1,4 @@
+using System;
 using ResortEmpire.Core;
 using ResortEmpire.Game;
 using TMPro;
@@ -78,9 +79,17 @@ namespace ResortEmpire.UI
         /// <summary>The filled part of the progress bar, from 0 to 1.</summary>
         public float BarFraction => _barFill.anchorMax.x;
 
-        public void Show(ResortGame game, NeedId need)
+        /// <param name="shownServed">
+        /// Served count as the island shows it (a guest counts once it has walked out of the building); null uses the
+        /// Core's count, which is ahead of the walking guests.
+        /// </param>
+        public void Show(ResortGame game, NeedId need, Func<NeedId, int> shownServed = null)
         {
             NeedStatus status = game.GetNeedStatus(need);
+            if (shownServed != null)
+            {
+                status = new NeedStatus(status.Need, status.Total, status.Arrived, status.Waiting, status.Seated, shownServed(need));
+            }
             BuildingRuntime building = game.GetBuilding(game.Config.GetBuildingForNeed(need).building);
             bool isPremium = need == NeedId.OceanView;
             NeedState state = game.GetNeedState(need);

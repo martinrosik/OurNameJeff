@@ -130,7 +130,9 @@ namespace ResortEmpire.UI
             if (_game == null) return;
             _hud.Refresh(_game);
             _settings.Refresh(_game);
-            _needs.Refresh(_game);
+            // The needs panel counts a guest as served once it has walked out of the building on the island.
+            GuestCrowdView guests = _island != null ? _island.Guests : null;
+            _needs.Refresh(_game, guests != null ? guests.GetShownServed : (System.Func<NeedId, int>)null);
             _suddenRush.Refresh(_game);
             _stateToast.Refresh(_game);
             _workers.Refresh(_game);

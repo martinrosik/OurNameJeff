@@ -313,18 +313,57 @@ namespace ResortEmpire.Tests
         public IEnumerator OUR37_RowsMatchTheNeedStatus()
         {
             Game.StartWave();
-            Game.Tick(Game.Config.wave.incomingDuration + 60); // the first Food guest arrives at 15 s and takes about 36 s without a Worker
+            Game.Tick(Game.Config.wave.incomingDuration);
+            PlayInLockstep(60); // the first Food guest arrives at 15 s and takes about 36 s without a Worker
             yield return null;
 
             var needs = new[] { NeedId.Rooms, NeedId.Drinks, NeedId.Food };
             for (int i = 0; i < needs.Length; i++)
             {
                 NeedStatus status = Game.GetNeedStatus(needs[i]);
+                int shown = _island.Guests.GetShownServed(needs[i]);
                 NeedRowView row = _ui.Needs.Rows[i];
-                Assert.Greater(status.Served, 0, $"{needs[i]}: someone was served by now.");
-                StringAssert.EndsWith($"{status.Served}/{status.Total}", row.ProgressText);
-                Assert.AreEqual((float)status.Served / status.Total, row.BarFraction, 0.001f);
+                Assert.Greater(shown, 0, $"{needs[i]}: someone was served and walked out by now.");
+                Assert.LessOrEqual(shown, status.Served, "Never ahead of the Core.");
+                StringAssert.EndsWith($"{shown}/{status.Total}", row.ProgressText);
+                Assert.AreEqual((float)shown / status.Total, row.BarFraction, 0.001f);
             }
+        }
+
+        /// <summary>Plays the wave for <paramref name="seconds"/> with the guests walking in step (0.05 s steps).</summary>
+        private void PlayInLockstep(double seconds)
+        {
+            const float step = 0.05f;
+            for (double t = 0; t < seconds - 1e-9; t += step)
+            {
+                Game.Tick(step);
+                _island.Guests.FastForward(step);
+                _island.Refresh();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TheNeedsPanelCountsAGuestServedOnlyOnceItHasWalkedOut()
+        {
+            GuestCrowdView guests = _island.Guests;
+            BuildingView reception = _island.GetView(BuildingId.Reception);
+            Game.StartWave();
+            Game.Tick(Game.Config.wave.incomingDuration);
+
+            // Rooms unit 0 arrives at 11.25 s and the Core serves it 12 s later, while its guest is still inside.
+            while (Game.GetNeedStatus(NeedId.Rooms).Served == 0) PlayInLockstep(0.05);
+            yield return null;
+
+            Assert.AreEqual(1, Game.GetNeedStatus(NeedId.Rooms).Served, "The Core is done with the first Rooms guest ...");
+            Assert.AreEqual(1, reception.ShownSeated, "... but on the island the guest still sits in the Reception ...");
+            Assert.AreEqual("Rooms  0/8", _ui.Needs.Rows[0].ProgressText, "... so the panel doesn't count it yet.");
+            Assert.AreEqual(0f, _ui.Needs.Rows[0].BarFraction);
+
+            while (guests.GetShownServed(NeedId.Rooms) == 0 && Game.WaveTime < 60) PlayInLockstep(0.05);
+            yield return null;
+
+            Assert.AreEqual(0, reception.ShownSeated, "The guest walked out: its seat square is empty ...");
+            Assert.AreEqual("Rooms  1/8", _ui.Needs.Rows[0].ProgressText, "... and only now the panel counts it.");
         }
 
         [UnityTest]
@@ -446,6 +485,15 @@ namespace ResortEmpire.Tests
             yield return null;
 
             Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "Everyone is served.");
+
+            // The panel counts a guest once it has walked out of its building: let them finish their visits.
+            for (int i = 0; i < 4000 && (guests.GetShownServed(NeedId.Rooms) < 8 || guests.GetShownServed(NeedId.Food) < 6); i++)
+            {
+                guests.FastForward(0.05f);
+            }
+
+            yield return null;
+            Assert.AreEqual(GamePhase.WaveResolving, Game.Phase, "The guests are still on their way to the boat.");
             Assert.IsTrue(_ui.Needs.IsVisible, "The final counts stay up while the guests leave.");
             Assert.AreEqual("Rooms  8/8", _ui.Needs.Rows[0].ProgressText);
             Assert.AreEqual("Food  6/6", _ui.Needs.Rows[2].ProgressText);
