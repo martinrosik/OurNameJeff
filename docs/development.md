@@ -29,7 +29,7 @@ The team splits the work by Jira ticket (OUR Sprint 2). Built so far:
 - **Tutorial**: a practice wave with speech bubbles in `Tutorial.unity`, then the real game (see [Tutorial](#tutorial))
 - **Guest mood bubbles**: a guest walking out of a building shows a smile, flat face or frown for 2 s, from how long
   it waited for its seat there (`WaveSatisfaction.GetGuestMood`, sprites drawn at runtime by `MoodBubbleArt`). Never
-  a number (design-conflicts row 12)
+  a number (approved by the designer, design-conflicts row 12)
 - **Settings**: a gear in the top-right corner with Sound ON/OFF and PLAY TUTORIAL AGAIN (see [Greybox](#greybox))
 
 **When working on a ticket, read its guide in [tasks/](tasks/README.md) first.** It holds the Build-doc rules,

@@ -32,7 +32,7 @@ namespace ResortEmpire.Game
     /// <b>Mood bubbles:</b> when a guest walks out of a building, a bubble above it shows for a moment how that visit
     /// went: a smile, a flat face or a frown, from how long it waited for its seat (<see cref="WaveSatisfaction.GetGuestMood"/>,
     /// the same thresholds Wave Satisfaction uses). Only a face, never a number or a countdown: the Build doc (§4.4)
-    /// keeps the score for Wave Complete. See docs/design-conflicts.md.
+    /// keeps the score for Wave Complete. Approved by the designer (docs/design-conflicts.md, row 12).
     /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
