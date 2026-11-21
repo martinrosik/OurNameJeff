@@ -31,8 +31,9 @@ namespace ResortEmpire.Game
     /// <para>
     /// <b>Mood bubbles:</b> when a guest walks out of a building, a bubble above it shows for a moment how that visit
     /// went: a smile, a flat face or a frown, from how long it waited for its seat (<see cref="WaveSatisfaction.GetGuestMood"/>,
-    /// the same thresholds Wave Satisfaction uses). Only a face, never a number or a countdown: the Build doc (§4.4)
-    /// keeps the score for Wave Complete. Approved by the designer (docs/design-conflicts.md, row 12).
+    /// the same thresholds Wave Satisfaction uses). Approved by the designer (docs/design-conflicts.md, row 12).
+    /// Each such visit also feeds the live satisfaction bar and its comment on the Wave Needs Panel
+    /// (<see cref="TryGetShownSatisfaction"/>, <see cref="LatestFeedback"/>; design-conflicts row 4).
     /// </para>
     /// </summary>
     public sealed class GuestCrowdView : MonoBehaviour
@@ -80,6 +81,7 @@ namespace ResortEmpire.Game
         private readonly List<Walker> _walkers = new List<Walker>();
         private readonly Stack<SpriteRenderer> _pool = new Stack<SpriteRenderer>();
         private readonly Stack<SpriteRenderer> _bubblePool = new Stack<SpriteRenderer>();
+        private readonly List<(NeedId Need, double WaitSeconds)> _shownWaits = new List<(NeedId Need, double WaitSeconds)>();
         private SatisfactionSettings _satisfaction;
         private readonly Dictionary<NeedId, Building> _buildings = new Dictionary<NeedId, Building>();
         private readonly System.Random _random = new System.Random(34);
@@ -156,6 +158,28 @@ namespace ResortEmpire.Game
         {
             if (!_buildings.TryGetValue(need, out Building b)) return 0;
             return Mathf.Min(b.Inside, b.Seats);
+        }
+
+        /// <summary>
+        /// The last guest that walked out of a building this wave, and how its visit went; null before the first one.
+        /// The satisfaction bar on the Wave Needs Panel shows it as a short comment.
+        /// </summary>
+        public GuestFeedback LatestFeedback { get; private set; }
+
+        /// <summary>Visits the player has seen end this wave (guests that walked out of a building).</summary>
+        public int ShownVisitCount => _shownWaits.Count;
+
+        /// <summary>
+        /// Wave Satisfaction of the visits the player has seen end so far (the same formula as <see cref="WaveSatisfaction"/>),
+        /// so the satisfaction bar moves exactly when a mood bubble appears. False before the first guest walks out.
+        /// Once every guest has walked out, it equals the wave's result on Wave Complete.
+        /// </summary>
+        public bool TryGetShownSatisfaction(out double satisfaction)
+        {
+            satisfaction = 0;
+            if (_shownWaits.Count == 0 || _satisfaction == null) return false;
+            satisfaction = WaveSatisfaction.Calculate(_shownWaits, _satisfaction);
+            return true;
         }
 
         /// <summary>The moods of the bubbles above guests right now, one per bubble.</summary>
@@ -269,6 +293,8 @@ namespace ResortEmpire.Game
 
             HideBubble(walker);
             walker.Mood = WaveSatisfaction.GetGuestMood(wait, _satisfaction);
+            _shownWaits.Add((visit.Need, wait));
+            LatestFeedback = new GuestFeedback(visit.Need, walker.Mood, _shownWaits.Count);
             walker.Bubble = TakeBubble();
             walker.Bubble.sprite = MoodBubbleArt.Get(walker.Mood);
             walker.Bubble.sortingOrder = sortingOrder + 1; // above every guest
@@ -580,10 +606,29 @@ namespace ResortEmpire.Game
 
             _walkers.Clear();
             _buildings.Clear();
+            _shownWaits.Clear();
+            LatestFeedback = null;
             _plan = null;
             _nextGuest = 0;
             _nextSpawnDelay = 0f;
             _replannedForRush = false;
+        }
+
+        /// <summary>How one guest's visit went, as it walked out of the building of <see cref="Need"/>.</summary>
+        public sealed class GuestFeedback
+        {
+            public GuestFeedback(NeedId need, GuestMood mood, int number)
+            {
+                Need = need;
+                Mood = mood;
+                Number = number;
+            }
+
+            public NeedId Need { get; }
+            public GuestMood Mood { get; }
+
+            /// <summary>1 for the first guest that walked out this wave, 2 for the next, and so on.</summary>
+            public int Number { get; }
         }
 
         /// <summary>Where one building's door is (relative to the building).</summary>

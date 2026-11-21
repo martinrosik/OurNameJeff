@@ -23,6 +23,59 @@ namespace ResortEmpire.Game
         /// <summary>OUR-38: a guest's feedback on a bottleneck, e.g. "Drinks takes a bit too long."</summary>
         public static string GuestComplaint(ResortGame game, NeedId need) => $"\"{Need(game, need)} takes a bit too long.\"";
 
+        /// <summary>Live satisfaction bar on the Wave Needs Panel (Figma S2).</summary>
+        public const string SatisfactionLabel = "SATISFACTION";
+
+        /// <summary>Live satisfaction bar: the comment before any guest has walked out of a building.</summary>
+        public const string NoGuestFeedbackYet = "Guests are on their way.";
+
+        /// <summary>Live satisfaction bar: "86%" (rounded down, like Wave Complete), or "-" before the first guest.</summary>
+        public static string LiveSatisfaction(double? satisfaction) =>
+            satisfaction.HasValue ? $"{(int)Math.Floor(satisfaction.Value + 1e-6)}%" : "-";
+
+        // {0} is the building's name. Short enough for one line on the side panel.
+        private static readonly string[] HappyComments =
+        {
+            "No waiting at the {0}. Lovely!",
+            "The {0} was quick, thanks!",
+            "Great service, thank you!",
+        };
+
+        private static readonly string[] NeutralComments =
+        {
+            "The {0} was okay, a bit slow.",
+            "Not bad, but I waited a while.",
+            "Fine. Could be quicker.",
+        };
+
+        private static readonly string[] UnhappyComments =
+        {
+            "Way too long at the {0}!",
+            "I waited ages. Not happy!",
+            "The {0} took forever. Ugh.",
+        };
+
+        /// <summary>
+        /// Live satisfaction bar: what a guest says as it walks out of a building, from its mood (the same one as its
+        /// bubble): glad when it sat down quickly, annoyed when it waited long. <paramref name="number"/> picks one of
+        /// a few lines, so guests in a row don't all say the same.
+        /// </summary>
+        public static string GuestFeedback(ResortGame game, NeedId need, GuestMood mood, int number)
+        {
+            string[] lines;
+            switch (mood)
+            {
+                case GuestMood.Happy: lines = HappyComments; break;
+                case GuestMood.Neutral: lines = NeutralComments; break;
+                default: lines = UnhappyComments; break;
+            }
+
+            BuildingDefinition building = game.Config.GetBuildingForNeed(need);
+            string place = building != null ? Building(game, building.building) : Need(game, need);
+            string line = lines[(number % lines.Length + lines.Length) % lines.Length];
+            return $"\"{string.Format(line, place)}\"";
+        }
+
         /// <summary>Sudden rush (Build doc §4.6): "Sudden rush at Beach Bar!".</summary>
         public static string SuddenRushTitle(ResortGame game, BuildingId building) => $"Sudden rush at {Building(game, building)}!";
 
