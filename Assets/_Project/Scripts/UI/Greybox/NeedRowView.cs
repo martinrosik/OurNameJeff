@@ -116,6 +116,10 @@ namespace ResortEmpire.UI
 
         public void Hide() => _background.gameObject.SetActive(false);
 
+        /// <summary>Moves and sizes the row on the panel (its contents stretch with it).</summary>
+        public void SetLayout(Vector2 position, Vector2 size) =>
+            _background.rectTransform.At(new Vector2(0f, 1f), new Vector2(0f, 1f), position, size);
+
         private static Color GetRowColor(NeedState state, bool isPremium)
         {
             switch (state)

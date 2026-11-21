@@ -5,7 +5,7 @@ so whoever picks them up starts from the right numbers. All numbers are TUNING a
 
 ## Wave Satisfaction and stars (Build doc §4.4)
 
-- Satisfaction is collected quietly during the wave and **only shown after it** (never live).
+- Satisfaction is collected during the wave. The Wave Needs Panel shows it live from the guests that walked out (design-conflicts row 4); the rating is given on Wave Complete.
 - Per need unit: waiting ≤ `patience_grace` 10 s → 100 %. It then falls linearly to `unit_floor` 25 % at 30 s, and
   stays at 25 % after that.
 - Wave Satisfaction = max(`wave_floor` 40 %, weighted average). Ocean View weighs 1.5 (others 1.0).

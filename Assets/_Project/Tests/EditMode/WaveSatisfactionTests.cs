@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using ResortEmpire.Core;
 using ResortEmpire.Editor;
+using ResortEmpire.Game;
 
 namespace ResortEmpire.Tests
 {
@@ -144,6 +145,41 @@ namespace ResortEmpire.Tests
 
             // (100 × 1 + 100 × 1.5 + 25 × 1.5) ÷ (1 + 1.5 + 1.5) = 71.875; unweighted it would be 75.
             Assert.AreEqual(71.875, WaveSatisfaction.Calculate(wave, Settings), 1e-6);
+        }
+
+        [Test]
+        public void LiveSatisfaction_TheVisitsSeenSoFarUseTheWaveFormula()
+        {
+            WaveSimulation wave = HandServedWave(20, 1, (NeedId.Rooms, 1), (NeedId.OceanView, 2));
+            wave.AdvanceTo(50);
+            Assert.IsTrue(wave.FinishService(NeedId.OceanView));
+
+            var seen = new List<(NeedId, double)> { (NeedId.Rooms, 0), (NeedId.OceanView, 0), (NeedId.OceanView, 30) };
+            Assert.AreEqual(WaveSatisfaction.Calculate(wave, Settings), WaveSatisfaction.Calculate(seen, Settings), 1e-6,
+                "Once every visit is seen, the live bar ends on the wave's result.");
+            Assert.AreEqual(100, WaveSatisfaction.Calculate(new List<(NeedId, double)>(), Settings), 1e-6, "Nobody waited yet.");
+            Assert.AreEqual(Settings.waveFloor, WaveSatisfaction.Calculate(new[] { (NeedId.Food, 120.0) }, Settings), 1e-6,
+                "The wave floor holds for the live bar too.");
+        }
+
+        [Test]
+        public void GuestFeedback_GladWhenServedQuicklyAnnoyedAfterALongWait()
+        {
+            var game = new ResortGame(_config);
+            var happy = new HashSet<string>();
+            var unhappy = new HashSet<string>();
+            for (int number = 1; number <= 6; number++)
+            {
+                happy.Add(GameText.GuestFeedback(game, NeedId.Food, GuestMood.Happy, number));
+                unhappy.Add(GameText.GuestFeedback(game, NeedId.Food, GuestMood.Unhappy, number));
+                Assert.IsNotEmpty(GameText.GuestFeedback(game, NeedId.Food, GuestMood.Neutral, number));
+            }
+
+            Assert.Greater(happy.Count, 1, "Guests in a row don't all say the same.");
+            CollectionAssert.IsEmpty(happy.Intersect(unhappy), "A happy guest never says what an annoyed one says.");
+            Assert.IsTrue(happy.Concat(unhappy).All(line => line.StartsWith("\"") && line.EndsWith("\"")), "Quoted, like OUR-38's complaint.");
+            Assert.IsTrue(happy.Any(line => line.Contains("Restaurant")), "Some lines name the building the guest left.");
+            Assert.IsTrue(happy.Concat(unhappy).All(line => line.Length <= 40), "Each fits on one line of the side panel.");
         }
 
         [Test]
