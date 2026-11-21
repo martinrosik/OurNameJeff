@@ -91,6 +91,18 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator ResortValueStaysClearOfSkipTutorial()
+        {
+            yield return LoadTutorial();
+
+            var pill = new Vector3[4];
+            var skip = new Vector3[4];
+            _ui.Hud.ResortValuePill.GetWorldCorners(pill);
+            ((RectTransform)_tutorial.View.SkipButton.transform).GetWorldCorners(skip);
+            Assert.LessOrEqual(pill[2].x, skip[0].x, "Resort Value sits left of SKIP TUTORIAL, which takes the gear's corner here.");
+        }
+
+        [UnityTest]
         public IEnumerator BubblesPointAtWhatTheyExplain()
         {
             yield return LoadTutorial();

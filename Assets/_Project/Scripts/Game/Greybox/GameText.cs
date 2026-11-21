@@ -244,6 +244,15 @@ namespace ResortEmpire.Game
         /// <summary>"88%". Rounded down, so the shown % never reaches a star threshold the wave missed.</summary>
         public static string WaveSatisfaction(WaveResult result) => $"{(int)Math.Floor(result.Satisfaction + 1e-6)}%";
 
+        // Resort Value: the status number in the top bar, and what a wave added on Wave Complete.
+        public const string ResortValueLabel = "Resort Value";
+
+        /// <summary>"1,250" for the top bar.</summary>
+        public static string ResortValue(int value) => value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+
+        /// <summary>"+100", or "+0" after a weak wave: Resort Value never drops.</summary>
+        public static string ResortValueGain(WaveResult result) => $"+{ResortValue(result.ResortValueGain)}";
+
         // After the last wave: the same card, with Play Again.
         public const string AllWavesPlayedTitle = "ALL WAVES PLAYED";
         public const string AllWavesPlayedMessage = "Every wave of guests had a great stay!";

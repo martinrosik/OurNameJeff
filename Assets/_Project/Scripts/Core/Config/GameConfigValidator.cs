@@ -40,6 +40,7 @@ namespace ResortEmpire.Core
             }
 
             ValidateSatisfaction(config.satisfaction, errors);
+            ValidateResortValue(config.resortValue, errors);
             ValidateNeeds(config, errors);
             ValidateBuildings(config, errors);
 
@@ -88,6 +89,31 @@ namespace ResortEmpire.Core
             if (!(satisfaction.unitFloor < satisfaction.waveFloor && satisfaction.waveFloor < thresholds[2]))
             {
                 errors.Add($"WR1: unitFloor ({satisfaction.unitFloor} %) < waveFloor ({satisfaction.waveFloor} %) < the 3-star threshold ({thresholds[2]} %) must hold.");
+            }
+        }
+
+        private static void ValidateResortValue(ResortValueSettings resortValue, List<string> errors)
+        {
+            if (resortValue == null)
+            {
+                errors.Add("Resort Value settings are missing.");
+                return;
+            }
+
+            if (resortValue.startingValue < 0) errors.Add($"Resort Value: startingValue must be 0 or more (is {resortValue.startingValue}).");
+
+            int[] gains = resortValue.gainPerRating;
+            if (gains == null || gains.Length != 6)
+            {
+                errors.Add("Resort Value: gainPerRating needs 6 values: 1, 2, 3, 4, 5 stars and Perfect.");
+                return;
+            }
+
+            for (int i = 0; i < gains.Length; i++)
+            {
+                // Resort Value only grows (GDD §7.6): a weak wave adds 0, never takes any away.
+                if (gains[i] < 0) errors.Add($"Resort Value: gainPerRating value {i + 1} ({gains[i]}) must be 0 or more, Resort Value never drops.");
+                if (i > 0 && gains[i] < gains[i - 1]) errors.Add($"Resort Value: gainPerRating must not drop with a better rating: value {i + 1} ({gains[i]}) is below value {i} ({gains[i - 1]}).");
             }
         }
 

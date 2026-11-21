@@ -48,6 +48,14 @@ namespace ResortEmpire.Editor
                 oceanViewSatisfactionWeight = 1.5f,
             };
 
+            // Resort Value: grows after each wave by its rating, never drops (GDD §7.6). Not in the Build doc: placeholder
+            // amounts, TUNING. 1 and 2 stars add 0.
+            config.resortValue = new ResortValueSettings
+            {
+                startingValue = 0,
+                gainPerRating = new[] { 0, 0, 50, 100, 150, 200 },
+            };
+
             config.needs = new List<NeedDefinition>
             {
                 Need(NeedId.Rooms, "Rooms"),

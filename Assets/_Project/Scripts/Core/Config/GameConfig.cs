@@ -16,6 +16,9 @@ namespace ResortEmpire.Core
         [Tooltip("Wave Satisfaction and the star rating on Wave Complete (Build doc §4.4).")]
         public SatisfactionSettings satisfaction = new SatisfactionSettings();
 
+        [Tooltip("Resort Value: the status number that grows after each wave by its rating and never drops (GDD §7.6).")]
+        public ResortValueSettings resortValue = new ResortValueSettings();
+
         [Tooltip("One entry per need.")]
         public List<NeedDefinition> needs = new List<NeedDefinition>();
 

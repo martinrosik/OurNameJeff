@@ -43,8 +43,15 @@ namespace ResortEmpire.Core
                 _buildingList.Add(building);
             }
 
+            ResortValue = Math.Max(0, config.resortValue?.startingValue ?? 0);
             Phase = GamePhase.AwaitingWave;
         }
+
+        /// <summary>
+        /// Resort Value (GDD §7.6, Build doc §5.5): the resort's status number. It grows after each wave by the wave's
+        /// rating (<see cref="ResortValueSettings.gainPerRating"/>) and never drops or gets spent.
+        /// </summary>
+        public int ResortValue { get; private set; }
 
         public GameConfig Config { get; }
         public GamePhase Phase { get; private set; }
@@ -254,9 +261,10 @@ namespace ResortEmpire.Core
             {
                 // Wave evaluation: Wave Satisfaction is computed only now, from every unit's wait (Build doc §4.4).
                 double satisfaction = WaveSatisfaction.Calculate(CurrentWave, Config.satisfaction);
+                WaveRating rating = WaveSatisfaction.GetRating(satisfaction, Config.satisfaction);
                 LastWaveResult = new WaveResult(
                     CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime,
-                    satisfaction, WaveSatisfaction.GetRating(satisfaction, Config.satisfaction));
+                    satisfaction, rating, Config.resortValue?.GetGain(rating) ?? 0);
                 SetPhase(GamePhase.WaveResolving);
             }
         }
@@ -270,6 +278,10 @@ namespace ResortEmpire.Core
             if (Phase != GamePhase.WaveResolving) return false;
 
             CompletedWaves++;
+
+            // Resort Value grows with the rating; a weak wave adds 0, never less (it only ever grows).
+            ResortValue += LastWaveResult?.ResortValueGain ?? 0;
+
             SetPhase(GamePhase.WaveComplete);
             WaveCompleted?.Invoke(LastWaveResult);
             return true;
