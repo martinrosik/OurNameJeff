@@ -13,7 +13,8 @@ namespace ResortEmpire.UI
     /// After the last wave the same card says ALL WAVES PLAYED, and its button, Play Again, starts a new game.
     /// Rewards and "What went well" join the card in a later sprint.
     /// Wave evaluation: the card shows the rating as five stars in an arc (plus PERFECT! for a Perfect wave), then
-    /// the Wave Satisfaction % and Guests served, one row each.
+    /// the Wave Satisfaction % and Guests served, one row each. Resort Value: a last row says what the wave added ("+100",
+    /// "+0" after a weak wave).
     /// </summary>
     internal sealed class WaveCompleteView
     {
@@ -37,6 +38,7 @@ namespace ResortEmpire.UI
         private readonly TextMeshProUGUI _perfect;
         private readonly StatRow _satisfactionRow;
         private readonly StatRow _statRow;
+        private readonly StatRow _resortValueRow;
         private readonly Button _continue;
         private bool _isAllWavesPlayed;
 
@@ -64,6 +66,7 @@ namespace ResortEmpire.UI
 
             _satisfactionRow = new StatRow("SatisfactionRow", card.transform);
             _statRow = new StatRow("StatRow", card.transform);
+            _resortValueRow = new StatRow("ResortValueRow", card.transform);
 
             _continue = UIFactory.Button("ContinueButton", card.transform, GameText.ContinueLabel, GreyboxPalette.Primary, Color.white, 17, OnButton);
             ((RectTransform)_continue.transform).At(bottom, bottom, new Vector2(0f, 12f), new Vector2(240f, 46f));
@@ -79,6 +82,7 @@ namespace ResortEmpire.UI
         public int EarnedStars => _stars.EarnedCount;
         public bool PerfectVisible => _perfect.gameObject.activeSelf;
         public string SatisfactionText => _satisfactionRow.IsShown ? _satisfactionRow.Value : string.Empty;
+        public string ResortValueGainText => _resortValueRow.IsShown ? _resortValueRow.Value : string.Empty;
         public Button ContinueButton => _continue;
 
         /// <summary>Tutorial: the card, and the rating stars on it, for the bubble that explains them.</summary>
@@ -108,7 +112,8 @@ namespace ResortEmpire.UI
                 earnedStars,
                 result.Rating == WaveRating.Perfect,
                 (_satisfactionRow, GameText.WaveSatisfactionLabel, GameText.WaveSatisfaction(result)),
-                (_statRow, GameText.GuestsServedLabel, GameText.GuestsServed(result)));
+                (_statRow, GameText.GuestsServedLabel, GameText.GuestsServed(result)),
+                (_resortValueRow, GameText.ResortValueLabel, GameText.ResortValueGain(result)));
         }
 
         private void ShowAllWavesPlayed(ResortGame game)
@@ -154,7 +159,7 @@ namespace ResortEmpire.UI
             }
 
             // Hide only the rows not listed: switching a shown row off and on every frame would rebuild the canvas.
-            foreach (StatRow row in new[] { _satisfactionRow, _statRow })
+            foreach (StatRow row in new[] { _satisfactionRow, _statRow, _resortValueRow })
             {
                 bool isListed = false;
                 foreach ((StatRow Row, string Label, string Value) shown in rows) isListed |= shown.Row == row;

@@ -1,3 +1,5 @@
+using System;
+
 namespace ResortEmpire.Core
 {
     /// <summary>
@@ -8,8 +10,10 @@ namespace ResortEmpire.Core
     public sealed class WaveResult
     {
         public WaveResult(
-            int waveIndex, int guests, int unitsServed, int totalUnits, double duration, double satisfaction, WaveRating rating)
+            int waveIndex, int guests, int unitsServed, int totalUnits, double duration, double satisfaction, WaveRating rating,
+            int resortValueGain = 0)
         {
+            ResortValueGain = Math.Max(0, resortValueGain);
             WaveIndex = waveIndex;
             Guests = guests;
             UnitsServed = unitsServed;
@@ -38,5 +42,8 @@ namespace ResortEmpire.Core
 
         /// <summary>Rating tier reached by <see cref="Satisfaction"/>: one star at the least, never zero.</summary>
         public WaveRating Rating { get; }
+
+        /// <summary>Resort Value this wave added, from its rating. 0 or more: Resort Value never drops.</summary>
+        public int ResortValueGain { get; }
     }
 }

@@ -14,8 +14,8 @@ namespace ResortEmpire.UI
     /// <item><b>OUR-33</b>: the next-wave forecast on the side panel before the wave, with which buildings have a Worker;</item>
     /// <item><b>OUR-27</b>: Welcome Guests starts the wave manually.</item>
     /// </list>
-    /// The settings gear takes the top bar's right corner (<see cref="SettingsView"/>). Currencies (Coins, Energy,
-    /// Resort Value) join the top bar in a later sprint, left of it.
+    /// The settings gear takes the top bar's right corner (<see cref="SettingsView"/>). Resort Value sits left of it;
+    /// the currencies (Coins, Energy) join the top bar in a later sprint, left of Resort Value.
     /// </summary>
     internal sealed class HudView
     {
@@ -24,6 +24,13 @@ namespace ResortEmpire.UI
 
         private readonly GreyboxUI _owner;
         private readonly TextMeshProUGUI _status;
+        private readonly TextMeshProUGUI _resortValue;
+        private readonly RectTransform _resortValuePill;
+
+        // Right edge of the Resort Value pill: left of the settings gear, or left of the wider SKIP TUTORIAL button that
+        // takes the gear's corner in the Tutorial scene.
+        private const float ResortValueBesideGear = -40f;
+        private const float ResortValueBesideSkip = -120f;
         private readonly GameObject _forecastPanel;
         private readonly TextMeshProUGUI _title;
         private readonly TextMeshProUGUI _subtitle;
@@ -50,6 +57,15 @@ namespace ResortEmpire.UI
             accent.rectTransform.At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(6f, 0f), new Vector2(8f, 16f));
             _status = UIFactory.Text("Label", pill.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
             _status.rectTransform.Fill(20, 8, 0, 0);
+
+            // Resort Value: right of the top bar, left of the settings gear. More currencies join to its left later.
+            Image valuePill = UIFactory.Panel("ResortValue", topBar, UIFactory.Paper);
+            _resortValuePill = valuePill.rectTransform;
+            _resortValuePill.At(new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(ResortValueBesideGear, 0f), new Vector2(190f, 28f));
+            TextMeshProUGUI valueLabel = UIFactory.Text("Label", valuePill.transform, GameText.ResortValueLabel, 11, UIFactory.Ink.WithAlpha(0.75f), TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+            valueLabel.rectTransform.Fill(10, 70, 0, 0);
+            _resortValue = UIFactory.Text("Value", valuePill.transform, string.Empty, 14, GreyboxPalette.Primary, TextAlignmentOptions.MidlineRight, FontStyles.Bold);
+            _resortValue.rectTransform.Fill(90, 10, 0, 0);
 
             Image panel = UIFactory.SidePanel("ForecastPanel", sideArea);
             _forecastPanel = panel.gameObject;
@@ -87,6 +103,8 @@ namespace ResortEmpire.UI
         public RectTransform ForecastPanel => (RectTransform)_forecastPanel.transform;
         public bool ForecastVisible => _forecastPanel.activeSelf;
         public string StatusText => _status.text;
+        public string ResortValueText => _resortValue.text;
+        public RectTransform ResortValuePill => _resortValuePill;
 
         public int VisibleForecastRows
         {
@@ -108,6 +126,10 @@ namespace ResortEmpire.UI
         public void Refresh(ResortGame game)
         {
             _status.text = GameText.Status(game);
+            string resortValue = GameText.ResortValue(game.ResortValue);
+            if (_resortValue.text != resortValue) _resortValue.text = resortValue;
+            float valueX = _owner.SettingsAvailable ? ResortValueBesideGear : ResortValueBesideSkip;
+            if (!Mathf.Approximately(_resortValuePill.anchoredPosition.x, valueX)) _resortValuePill.anchoredPosition = new Vector2(valueX, 0f);
 
             bool awaiting = game.Phase == GamePhase.AwaitingWave;
             _forecastPanel.SetActive(awaiting);

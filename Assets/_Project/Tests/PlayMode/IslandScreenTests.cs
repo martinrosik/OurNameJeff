@@ -873,6 +873,72 @@ namespace ResortEmpire.Tests
         }
 
         [UnityTest]
+        public IEnumerator ResortValue_TheTopBarShowsItAndWaveCompleteShowsWhatTheWaveAdded()
+        {
+            yield return null;
+            int start = Game.ResortValue;
+            Assert.AreEqual(Game.Config.resortValue.startingValue, start);
+            Assert.AreEqual(GameText.ResortValue(start), _ui.Hud.ResortValueText);
+
+            Game.StartWave();
+            yield return FinishStartedWave();
+
+            WaveResult result = Game.LastWaveResult;
+            int gain = Game.Config.resortValue.GetGain(result.Rating);
+            Assert.Greater(gain, 0, "Wave 1 handled with the starting Workers is Perfect.");
+            Assert.AreEqual(gain, result.ResortValueGain);
+            Assert.AreEqual($"+{GameText.ResortValue(gain)}", _ui.WaveComplete.ResortValueGainText);
+            Assert.AreEqual(GameText.ResortValue(start + gain), _ui.Hud.ResortValueText);
+
+            _ui.WaveComplete.ContinueButton.onClick.Invoke();
+            yield return null;
+            Assert.AreEqual(GameText.ResortValue(start + gain), _ui.Hud.ResortValueText, "Continue doesn't add it again.");
+        }
+
+        [UnityTest]
+        public IEnumerator ResortValue_AWeakWaveShowsPlusZeroAndTheTopBarStaysTheSame()
+        {
+            int savedFood = Game.Config.waves[0].food;
+            Game.Config.waves[0].food = 30; // a big Food demand on the empty Restaurant
+            try
+            {
+                yield return null;
+                int start = Game.ResortValue;
+
+                Game.StartWave();
+                Game.Tick(Game.Config.wave.incomingDuration + Game.Config.wave.waveTimer + 600);
+                yield return null;
+                _island.Guests.FastForward(600f);
+                yield return null;
+                yield return null;
+                Assert.AreEqual(GamePhase.WaveComplete, Game.Phase);
+
+                Assert.Less(Game.LastWaveResult.Rating, WaveRating.ThreeStars);
+                Assert.AreEqual("+0", _ui.WaveComplete.ResortValueGainText);
+                Assert.AreEqual(start, Game.ResortValue, "Resort Value never drops.");
+                Assert.AreEqual(GameText.ResortValue(start), _ui.Hud.ResortValueText);
+            }
+            finally
+            {
+                Game.Config.waves[0].food = savedFood;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ResortValue_SitsInTheTopBarLeftOfTheGear()
+        {
+            yield return null;
+
+            Assert.IsTrue(_ui.Hud.ResortValuePill.gameObject.activeInHierarchy);
+            var pill = new Vector3[4];
+            var gear = new Vector3[4];
+            _ui.Hud.ResortValuePill.GetWorldCorners(pill);
+            ((RectTransform)_ui.Settings.GearButton.transform).GetWorldCorners(gear);
+            Assert.Greater(pill[2].y, Screen.height * 0.9f, "In the top bar.");
+            Assert.LessOrEqual(pill[2].x, gear[0].x, "Left of the gear, not on top of it.");
+        }
+
+        [UnityTest]
         public IEnumerator OUR40_ContinueReturnsToTheIslandWithTheNextForecast()
         {
             Game.StartWave();
