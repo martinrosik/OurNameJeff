@@ -6,7 +6,7 @@ namespace ResortEmpire.Core
     /// <summary>
     /// One scripted wave (Build doc §4.8 "Progresia vĺn"). Demand is in need units, not guests; a guest carries
     /// about 2 needs on average. Needs without a building on the island are left out of the forecast.
-    /// Today the table feeds the forecast (OUR-33); OUR-34 will spawn these units over the arrival phase.
+    /// The table feeds the forecast (OUR-33), and OUR-34 spawns these units over the arrival phase.
     /// </summary>
     [Serializable]
     public sealed class WaveDefinition
@@ -33,18 +33,6 @@ namespace ResortEmpire.Core
                 case NeedId.Relax: return relax;
                 case NeedId.OceanView: return oceanView;
                 default: return 0;
-            }
-        }
-
-        public void SetDemand(NeedId need, int units)
-        {
-            switch (need)
-            {
-                case NeedId.Rooms: rooms = units; break;
-                case NeedId.Drinks: drinks = units; break;
-                case NeedId.Food: food = units; break;
-                case NeedId.Relax: relax = units; break;
-                case NeedId.OceanView: oceanView = units; break;
             }
         }
     }

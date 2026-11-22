@@ -12,6 +12,8 @@ namespace ResortEmpire.Core
     /// runs out. Arrivals are processed in time order from a precomputed schedule, so the result never depends on
     /// the frame rate. Only needs with a building on the island spawn (WR9). An arriving unit takes a free seat,
     /// or waits in the building's FIFO queue (the arrival time is kept for waiting time and satisfaction later).
+    /// Each unit's delay (arrival → served, minus a staffed service time, so a slow building counts too) is recorded
+    /// when it is served (<see cref="GetDelays"/>) for the Wave Satisfaction on Wave Complete.
     /// </para>
     /// <para>
     /// <b>OUR-41 drain:</b> after the arrival timer nobody new comes, but nobody leaves either (WR4): every unit
@@ -24,6 +26,12 @@ namespace ResortEmpire.Core
     /// everyone seated). A finished unit leaves its seat and the first one in the queue sits down at that moment.
     /// Arrivals and service ends are processed as one time-ordered sequence, so big and small steps give the same
     /// result.
+    /// </para>
+    /// <para>
+    /// <b>Sudden rush</b> (Build doc §4.6): when the wave is created with a rush, at <see cref="WaveSettings.suddenRushTime"/>
+    /// the building without a Worker gets <see cref="WaveSettings.suddenRushUnits"/> extra units of its need, arriving
+    /// over <see cref="WaveSettings.suddenRushDuration"/> seconds on top of the wave's demand (<see cref="SuddenRush"/>).
+    /// <see cref="ResortGame"/> decides which waves get one.
     /// </para>
     /// <para>
     /// <b>OUR-38 / OUR-39 need states:</b> each need has a <see cref="NeedState"/> (Build doc §4.4). States are
@@ -47,6 +55,10 @@ namespace ResortEmpire.Core
         private readonly double _bottleneckHysteresis;
         private double _nextStateCheck;
         private double _lastStateCheck;
+        private readonly int _rushUnits;
+        private readonly double _rushDuration;
+        private readonly Func<NeedId?> _pickRushNeed;
+        private readonly Func<NeedId, BuildingId> _buildingForNeed;
 
         /// <param name="forecast">Demand for the needs on the island (already filtered by WR9).</param>
         /// <param name="waveTimer">Length of the arrival phase in seconds.</param>
@@ -56,15 +68,22 @@ namespace ResortEmpire.Core
         /// step. Null: nobody is served automatically (only <see cref="FinishService"/>).
         /// </param>
         /// <param name="settings">
-        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis. Null uses the Build doc defaults of
-        /// <see cref="WaveSettings"/>.
+        /// OUR-38 / OUR-39: bottleneck threshold and hysteresis, and the mini-event settings. Null uses the Build doc
+        /// defaults of <see cref="WaveSettings"/>.
         /// </param>
+        /// <param name="pickRushNeed">
+        /// Sudden rush: null when this wave has none. Otherwise asked at <see cref="WaveSettings.suddenRushTime"/> which
+        /// need gets it (the one whose building has no Worker then); it may answer null, and then nothing happens.
+        /// </param>
+        /// <param name="buildingForNeed">Sudden rush: the building that serves a need (for <see cref="SuddenRush.Building"/>).</param>
         public WaveSimulation(
             WaveForecast forecast,
             double waveTimer,
             Func<NeedId, int> seatsForNeed,
             Func<NeedId, double> serviceSpeedForNeed = null,
-            WaveSettings settings = null)
+            WaveSettings settings = null,
+            Func<NeedId?> pickRushNeed = null,
+            Func<NeedId, BuildingId> buildingForNeed = null)
         {
             if (forecast == null) throw new ArgumentNullException(nameof(forecast));
             if (seatsForNeed == null) throw new ArgumentNullException(nameof(seatsForNeed));
@@ -75,12 +94,18 @@ namespace ResortEmpire.Core
             _bottleneckThreshold = Math.Max(1, settings.bottleneckThreshold);
             _bottleneckHysteresis = Math.Max(TimeEpsilon, settings.bottleneckHysteresis);
             _nextStateCheck = StateCheckInterval;
+            _rushUnits = Math.Max(1, settings.suddenRushUnits);
+            _rushDuration = Math.Max(TimeEpsilon, settings.suddenRushDuration);
+            _pickRushNeed = pickRushNeed;
+            _buildingForNeed = buildingForNeed;
+            ScheduledRushTime = pickRushNeed != null ? Math.Max(0, settings.suddenRushTime) : double.PositiveInfinity;
             WaveIndex = forecast.WaveIndex;
             GuestCount = forecast.Guests;
             WaveTimer = waveTimer;
             foreach (NeedDemand demand in forecast.Demand)
             {
-                var queue = new NeedQueue(demand.Need, demand.Units, waveTimer, seatsForNeed(demand.Need));
+                double normalServiceSeconds = settings.GetServiceSeconds(true);
+                var queue = new NeedQueue(demand.Need, demand.Units, waveTimer, seatsForNeed(demand.Need), normalServiceSeconds);
                 _needs[demand.Need] = queue;
                 _needList.Add(queue);
             }
@@ -91,6 +116,18 @@ namespace ResortEmpire.Core
         /// <summary>OUR-38 / OUR-39: a need changed state (need, from, to).</summary>
         public event Action<NeedId, NeedState, NeedState> StateChanged;
 
+        /// <summary>Sudden rush: it started (at <see cref="SuddenRush.StartTime"/>).</summary>
+        public event Action<SuddenRush> SuddenRushStarted;
+
+        /// <summary>Sudden rush: when it is due (infinity when this wave has none or it already started).</summary>
+        public double ScheduledRushTime { get; private set; }
+
+        /// <summary>Whether this wave was created with a Sudden rush (it may not have started yet).</summary>
+        public bool HasRushPlanned => _pickRushNeed != null;
+
+        /// <summary>Sudden rush once it has started; null before, or when the wave has none.</summary>
+        public SuddenRush SuddenRush { get; private set; }
+
         /// <summary>
         /// OUR-38 / OUR-39: the need's state. <see cref="NeedState.Locked"/> for a need that isn't in this wave
         /// (its building isn't on the island).
@@ -99,6 +136,12 @@ namespace ResortEmpire.Core
 
         /// <summary>Seconds of wave time the need has spent in BOTTLENECK (AC6 recommends the upgrade for the longest one).</summary>
         public double GetBottleneckSeconds(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.BottleneckSeconds : 0;
+
+        /// <summary>
+        /// Wave Complete breakdown: seconds of wave time the need's building served slower than a staffed one, i.e.
+        /// without a Worker (0 for a need that isn't in this wave).
+        /// </summary>
+        public double GetSlowServiceSeconds(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.SlowServiceSeconds : 0;
 
         /// <summary>
         /// OUR-39: re-reads the service speeds and re-checks every state now. Called right after a Worker move, so
@@ -188,7 +231,7 @@ namespace ResortEmpire.Core
         /// <returns>False when nobody of that need is seated.</returns>
         internal bool FinishService(NeedId need)
         {
-            if (!_needs.TryGetValue(need, out NeedQueue queue) || !queue.FinishService()) return false;
+            if (!_needs.TryGetValue(need, out NeedQueue queue) || !queue.FinishService(Time)) return false;
             CheckStates();
             return true;
         }
@@ -200,6 +243,27 @@ namespace ResortEmpire.Core
             {
                 foreach (NeedQueue need in _needList) yield return need.Need;
             }
+        }
+
+        /// <summary>
+        /// Wave Satisfaction: the delay of each unit of a need that has been served (arrival → served, minus a staffed
+        /// service time, in seconds), in the order they were served. Empty for a need that isn't in this wave.
+        /// </summary>
+        public IReadOnlyList<double> GetDelays(NeedId need) =>
+            _needs.TryGetValue(need, out NeedQueue queue) ? queue.Delays : (IReadOnlyList<double>)Array.Empty<double>();
+
+        /// <summary>
+        /// Guest mood bubbles: the delay of unit <paramref name="unit"/> (0-based, arrival order) of a need: its wait for
+        /// a seat plus however much longer than a staffed service its service took. Units sit down first come, first
+        /// served and every seated unit progresses at the same speed, so the n-th delay recorded is unit n's. False
+        /// while the unit hasn't been served yet, or for a need that isn't in this wave.
+        /// </summary>
+        public bool TryGetDelay(NeedId need, int unit, out double delaySeconds)
+        {
+            delaySeconds = 0;
+            if (unit < 0 || !_needs.TryGetValue(need, out NeedQueue queue) || unit >= queue.Delays.Count) return false;
+            delaySeconds = queue.Delays[unit];
+            return true;
         }
 
         /// <summary>Arrival time of unit <paramref name="index"/> (0-based) of a need.</summary>
@@ -232,7 +296,7 @@ namespace ResortEmpire.Core
             // 0.25 s grid of wave time.
             while (true)
             {
-                double next = Math.Min(waveTime, _nextStateCheck);
+                double next = Math.Min(Math.Min(waveTime, _nextStateCheck), ScheduledRushTime);
                 foreach (NeedQueue need in _needList)
                 {
                     next = Math.Min(next, need.NextEventTime(Time));
@@ -244,6 +308,14 @@ namespace ResortEmpire.Core
                 bool any = false;
                 foreach (NeedQueue need in _needList) any |= need.ProcessDueEvents(Time);
 
+                // Sudden rush: after this moment's arrivals and service ends.
+                if (Time >= ScheduledRushTime - TimeEpsilon)
+                {
+                    ScheduledRushTime = double.PositiveInfinity;
+                    StartRush();
+                    any = true;
+                }
+
                 bool gridCheck = Time >= _nextStateCheck - TimeEpsilon;
                 if (gridCheck) _nextStateCheck += StateCheckInterval;
                 if (any || gridCheck) CheckStates();
@@ -252,6 +324,24 @@ namespace ResortEmpire.Core
             }
 
             Time = waveTime;
+        }
+
+        /// <summary>
+        /// Sudden rush: adds <see cref="WaveSettings.suddenRushUnits"/> units to the need whose building has no Worker,
+        /// arriving evenly over the next <see cref="WaveSettings.suddenRushDuration"/> seconds (Build doc §4.6).
+        /// </summary>
+        private void StartRush()
+        {
+            NeedId? need = _pickRushNeed?.Invoke();
+            if (need == null || !_needs.TryGetValue(need.Value, out NeedQueue target)) return;
+
+            var times = new double[_rushUnits];
+            for (int i = 0; i < _rushUnits; i++) times[i] = Time + (i + 1) * _rushDuration / _rushUnits;
+            target.AddUnits(times);
+
+            BuildingId building = _buildingForNeed != null ? _buildingForNeed(target.Need) : default;
+            SuddenRush = new SuddenRush(target.Need, building, Time, _rushUnits, _rushDuration);
+            SuddenRushStarted?.Invoke(SuddenRush);
         }
 
         private void ReadSpeeds()
@@ -331,21 +421,38 @@ namespace ResortEmpire.Core
 
         private sealed class NeedQueue
         {
-            public NeedQueue(NeedId need, int total, double waveTimer, int seats)
+            public NeedQueue(NeedId need, int total, double waveTimer, int seats, double normalServiceSeconds)
             {
                 Need = need;
                 Total = Math.Max(0, total);
                 Seats = Math.Max(0, seats);
-                ArrivalTimes = new double[Total];
+                _normalServiceSeconds = Math.Max(0, normalServiceSeconds);
                 for (int k = 0; k < Total; k++)
                 {
                     // Steady rate demand ÷ waveTimer: unit k arrives at (k + 1) × waveTimer ÷ demand.
-                    ArrivalTimes[k] = (k + 1) * waveTimer / Total;
+                    ArrivalTimes.Add((k + 1) * waveTimer / Total);
                 }
             }
 
             public NeedId Need { get; }
-            public int Total { get; }
+
+            /// <summary>Units of the wave, plus a Sudden rush's extra ones once it started.</summary>
+            public int Total { get; private set; }
+
+            /// <summary>
+            /// Sudden rush: extra units arriving at <paramref name="times"/> (all later than now). Merged into the
+            /// schedule so it stays in time order; units already here keep their place.
+            /// </summary>
+            public void AddUnits(IReadOnlyList<double> times)
+            {
+                foreach (double time in times)
+                {
+                    int index = Arrived;
+                    while (index < ArrivalTimes.Count && ArrivalTimes[index] <= time) index++;
+                    ArrivalTimes.Insert(index, time);
+                    Total++;
+                }
+            }
             public int Seats { get; }
 
             /// <summary>OUR-38 / OUR-39: the need's state (Build doc §4.4).</summary>
@@ -380,7 +487,7 @@ namespace ResortEmpire.Core
 
                 return waiting;
             }
-            public double[] ArrivalTimes { get; }
+            public List<double> ArrivalTimes { get; } = new List<double>();
             public int Arrived { get; private set; }
             public int Seated => _remaining.Count;
             public int Served { get; private set; }
@@ -393,6 +500,17 @@ namespace ResortEmpire.Core
 
             /// <summary>Work left (1 - progress) of each seated unit, in the order they sat down.</summary>
             private readonly List<double> _remaining = new List<double>();
+
+            /// <summary>Arrival time of each seated unit, in the same order as <see cref="_remaining"/>.</summary>
+            private readonly List<double> _seatedArrivalTimes = new List<double>();
+
+            /// <summary>A staffed building's service time: only the time beyond it counts as a delay.</summary>
+            private readonly double _normalServiceSeconds;
+
+            /// <summary>Wave Satisfaction: delay (arrival → served, minus a staffed service time) of every unit that has been served.</summary>
+            private readonly List<double> _delays = new List<double>();
+
+            public IReadOnlyList<double> Delays => _delays;
 
             /// <summary>Wave time of this need's next arrival or service end (infinity when there is none).</summary>
             public double NextEventTime(double now)
@@ -408,9 +526,13 @@ namespace ResortEmpire.Core
                 return next;
             }
 
+            /// <summary>Wave Complete breakdown: wave time this building served slower than a staffed one (no Worker).</summary>
+            public double SlowServiceSeconds { get; private set; }
+
             public void Progress(double seconds)
             {
                 if (seconds <= 0 || Speed <= 0) return;
+                if (Speed * _normalServiceSeconds < 1 - TimeEpsilon) SlowServiceSeconds += seconds;
                 double work = seconds * Speed;
                 for (int i = 0; i < _remaining.Count; i++) _remaining[i] -= work;
             }
@@ -425,9 +547,7 @@ namespace ResortEmpire.Core
                 {
                     if (Speed > 0 && _remaining[i] <= TimeEpsilon * Speed)
                     {
-                        _remaining.RemoveAt(i);
-                        Served++;
-                        SeatNextInLine();
+                        Serve(i, now);
                         any = true;
                     }
                     else
@@ -445,13 +565,21 @@ namespace ResortEmpire.Core
                 return any;
             }
 
-            public bool FinishService()
+            public bool FinishService(double now)
             {
                 if (_remaining.Count == 0) return false;
-                _remaining.RemoveAt(0);
-                Served++;
-                SeatNextInLine();
+                Serve(0, now);
                 return true;
+            }
+
+            /// <summary>The unit on <paramref name="seat"/> is done: its delay is recorded and the next in line sits down.</summary>
+            private void Serve(int seat, double now)
+            {
+                _delays.Add(Math.Max(0, now - _seatedArrivalTimes[seat] - _normalServiceSeconds));
+                _remaining.RemoveAt(seat);
+                _seatedArrivalTimes.RemoveAt(seat);
+                Served++;
+                SeatNextInLine(now);
             }
 
             private void Arrive(double time)
@@ -460,6 +588,7 @@ namespace ResortEmpire.Core
                 if (_remaining.Count < Seats)
                 {
                     _remaining.Add(1);
+                    _seatedArrivalTimes.Add(time); // a free seat: no waiting (AC1b)
                 }
                 else
                 {
@@ -467,12 +596,13 @@ namespace ResortEmpire.Core
                 }
             }
 
-            private void SeatNextInLine()
+            private void SeatNextInLine(double now)
             {
                 if (Waiting.Count > 0 && _remaining.Count < Seats)
                 {
-                    Waiting.Dequeue();
+                    double arrivalTime = Waiting.Dequeue();
                     _remaining.Add(1);
+                    _seatedArrivalTimes.Add(arrivalTime);
                 }
             }
         }

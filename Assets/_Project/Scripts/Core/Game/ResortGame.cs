@@ -10,9 +10,9 @@ namespace ResortEmpire.Core
     /// building capacity (shown by OUR-50), the next-wave forecast (OUR-33), the manual wave start (OUR-27):
     /// AWAITING_WAVE → WAVE_INCOMING (boat) → WAVE_ACTIVE, guest arrivals over the 90 s arrival phase
     /// (OUR-34, <see cref="WaveSimulation"/>), the drain after it (OUR-41) and the wave end (OUR-35):
-    /// WAVE_ACTIVE → WAVE_RESOLVING (everyone served, guests return to the boat) → WAVE_COMPLETE. The rest comes with the
-    /// teammates' tickets add guests and the wave end. Each one has a <c>// OUR-xx</c> hook below and a guide in
-    /// <c>docs/tasks/</c>.
+    /// WAVE_ACTIVE → WAVE_RESOLVING (everyone served, guests return to the boat) → WAVE_COMPLETE, with the wave
+    /// evaluation (Wave Satisfaction and rating, <see cref="WaveSatisfaction"/>). Each ticket has a <c>// OUR-xx</c>
+    /// hook below and a guide in <c>docs/tasks/</c>; later sprints are listed in <c>docs/tasks/later.md</c>.
     /// </para>
     /// The Game layer calls <see cref="Tick"/> every frame and forwards player intents; views read state.
     /// </summary>
@@ -23,10 +23,17 @@ namespace ResortEmpire.Core
         private readonly BuildingRuntime[] _buildings;
         private readonly List<BuildingRuntime> _buildingList = new List<BuildingRuntime>();
         private double _incomingRemaining;
+        private readonly Random _random;
 
-        public ResortGame(GameConfig config)
+        /// <param name="random">
+        /// Sudden rush: decides whether a wave after <see cref="WaveSettings.suddenRushWave"/> gets one too
+        /// (<see cref="WaveSettings.suddenRushChance"/>). Null: only the rush wave itself has one. The game passes one
+        /// (<c>GameController</c>).
+        /// </param>
+        public ResortGame(GameConfig config, Random random = null)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config));
+            _random = random;
 
             _buildings = new BuildingRuntime[BuildingCount];
             foreach (BuildingDefinition definition in config.buildings)
@@ -36,8 +43,15 @@ namespace ResortEmpire.Core
                 _buildingList.Add(building);
             }
 
+            ResortValue = Math.Max(0, config.resortValue?.startingValue ?? 0);
             Phase = GamePhase.AwaitingWave;
         }
+
+        /// <summary>
+        /// Resort Value (GDD §7.6, Build doc §5.5): the resort's status number. It grows after each wave by the wave's
+        /// rating (<see cref="ResortValueSettings.gainPerRating"/>) and never drops or gets spent.
+        /// </summary>
+        public int ResortValue { get; private set; }
 
         public GameConfig Config { get; }
         public GamePhase Phase { get; private set; }
@@ -86,6 +100,9 @@ namespace ResortEmpire.Core
 
         /// <summary>OUR-38 / OUR-39: a need (and its building) changed state during the wave: need, from, to.</summary>
         public event Action<NeedId, NeedState, NeedState> NeedStateChanged;
+
+        /// <summary>Sudden rush: the building without a Worker got extra guests (Build doc §4.6).</summary>
+        public event Action<SuddenRush> SuddenRushStarted;
 
         /// <summary>OUR-45: a Worker moved from the first building to the second.</summary>
         public event Action<BuildingId, BuildingId> WorkerMoved;
@@ -140,20 +157,8 @@ namespace ResortEmpire.Core
         public WaveForecast GetNextWaveForecast() => HasNextWave ? GetForecast(CompletedWaves) : null;
 
         /// <summary>Demand for a wave, limited to needs that have a building on the island.</summary>
-        public WaveForecast GetForecast(int waveIndex)
-        {
-            WaveDefinition wave = Config.waves[waveIndex];
-            var demand = new List<NeedDemand>();
-            foreach (NeedDefinition need in Config.needs)
-            {
-                if (Config.GetBuildingForNeed(need.need) != null)
-                {
-                    demand.Add(new NeedDemand(need.need, wave.GetDemand(need.need)));
-                }
-            }
-
-            return new WaveForecast(waveIndex, wave.guests, demand);
-        }
+        /// <remarks>Always bigger than the wave before it (<see cref="WaveProgression"/>).</remarks>
+        public WaveForecast GetForecast(int waveIndex) => WaveProgression.GetForecast(Config, waveIndex);
 
         /// <summary>
         /// OUR-45: Workers can be moved before the wave (AWAITING_WAVE), while the boat comes in and during the wave,
@@ -204,8 +209,11 @@ namespace ResortEmpire.Core
                 Config.wave.waveTimer,
                 need => Config.GetBuildingForNeed(need) is BuildingDefinition b ? GetBuilding(b.building).Seats : 0,
                 GetServiceSpeed,
-                Config.wave);
+                Config.wave,
+                HasSuddenRush(CompletedWaves) ? (Func<NeedId?>)PickRushNeed : null,
+                need => Config.GetBuildingForNeed(need)?.building ?? default);
             CurrentWave.StateChanged += (need, from, to) => NeedStateChanged?.Invoke(need, from, to);
+            CurrentWave.SuddenRushStarted += rush => SuddenRushStarted?.Invoke(rush);
             _incomingRemaining = Config.wave.incomingDuration;
             SetPhase(_incomingRemaining > 0 ? GamePhase.WaveIncoming : GamePhase.WaveActive);
             return true;
@@ -251,8 +259,13 @@ namespace ResortEmpire.Core
             // and FinishResolving() completes the wave. OUR-40 tells the player.
             if (CurrentWave.IsFinished)
             {
+                // Wave evaluation: Wave Satisfaction is computed only now, from every unit's wait (Build doc §4.4).
+                double satisfaction = WaveSatisfaction.Calculate(CurrentWave, Config.satisfaction);
+                WaveRating rating = WaveSatisfaction.GetRating(satisfaction, Config.satisfaction);
                 LastWaveResult = new WaveResult(
-                    CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime);
+                    CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime,
+                    satisfaction, rating, Config.resortValue?.GetGain(rating) ?? 0,
+                    WaveBreakdown.Create(CurrentWave, WaveTime, Config.satisfaction, Config.breakdown));
                 SetPhase(GamePhase.WaveResolving);
             }
         }
@@ -266,6 +279,10 @@ namespace ResortEmpire.Core
             if (Phase != GamePhase.WaveResolving) return false;
 
             CompletedWaves++;
+
+            // Resort Value grows with the rating; a weak wave adds 0, never less (it only ever grows).
+            ResortValue += LastWaveResult?.ResortValueGain ?? 0;
+
             SetPhase(GamePhase.WaveComplete);
             WaveCompleted?.Invoke(LastWaveResult);
             return true;
@@ -281,6 +298,52 @@ namespace ResortEmpire.Core
 
             SetPhase(GamePhase.AwaitingWave);
             return true;
+        }
+
+        /// <summary>
+        /// Sudden rush: whether wave <paramref name="waveIndex"/> gets one (Build doc §4.6, §4.8). Always in the rush
+        /// wave (wave 2); in later waves by <see cref="WaveSettings.suddenRushChance"/>; never before the rush wave, and
+        /// never in a wave that debuts a need (W4 Relax, W7 Ocean View), so two new things don't come at once.
+        /// </summary>
+        public bool HasSuddenRush(int waveIndex) => HasSuddenRush(Config, waveIndex, _random);
+
+        internal static bool HasSuddenRush(GameConfig config, int waveIndex, Random random)
+        {
+            WaveSettings settings = config.wave;
+            if (!settings.suddenRushEnabled || waveIndex < 0 || waveIndex >= config.waves.Count) return false;
+
+            int rushWaveIndex = settings.suddenRushWave - 1;
+            if (waveIndex < rushWaveIndex || IsDebutWave(config, waveIndex)) return false;
+            if (waveIndex == rushWaveIndex) return true;
+            return random != null && random.NextDouble() < settings.suddenRushChance;
+        }
+
+        /// <summary>
+        /// A wave that debuts a need: the wave table gives it demand for a need the wave before didn't have
+        /// (W4 Relax, W7 Ocean View). Read from the table, whether or not the building is built yet.
+        /// </summary>
+        public static bool IsDebutWave(GameConfig config, int waveIndex)
+        {
+            if (waveIndex <= 0 || waveIndex >= config.waves.Count) return false;
+            WaveDefinition wave = config.waves[waveIndex];
+            WaveDefinition previous = config.waves[waveIndex - 1];
+            foreach (NeedId need in Enum.GetValues(typeof(NeedId)))
+            {
+                if (wave.GetDemand(need) > 0 && previous.GetDemand(need) == 0) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Sudden rush: the need of the building that has no Worker right now (the first one, if several).</summary>
+        private NeedId? PickRushNeed()
+        {
+            foreach (BuildingRuntime building in _buildingList)
+            {
+                if (!building.HasWorker) return building.Need;
+            }
+
+            return null;
         }
 
         /// <summary>OUR-46 / OUR-47: progress per second of a seated unit of <paramref name="need"/>.</summary>

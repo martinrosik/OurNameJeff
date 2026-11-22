@@ -14,19 +14,28 @@ namespace ResortEmpire.UI
     /// <item><b>OUR-33</b>: the next-wave forecast on the side panel before the wave, with which buildings have a Worker;</item>
     /// <item><b>OUR-27</b>: Welcome Guests starts the wave manually.</item>
     /// </list>
-    /// Currencies (Coins, Energy, Resort Value) join the top bar in a later sprint; leave room on the right.
+    /// The settings gear takes the top bar's right corner (<see cref="SettingsView"/>). Resort Value sits left of it;
+    /// the currencies (Coins, Energy) join the top bar in a later sprint, left of Resort Value.
     /// </summary>
     internal sealed class HudView
     {
         private const int ForecastRows = 5;
+        private const float ForecastIconSize = 18f;
 
         private readonly GreyboxUI _owner;
         private readonly TextMeshProUGUI _status;
+        private readonly TextMeshProUGUI _resortValue;
+        private readonly RectTransform _resortValuePill;
+
+        // Right edge of the Resort Value pill: left of the settings gear, or left of the wider SKIP TUTORIAL button that
+        // takes the gear's corner in the Tutorial scene.
+        private const float ResortValueBesideGear = -40f;
+        private const float ResortValueBesideSkip = -120f;
         private readonly GameObject _forecastPanel;
         private readonly TextMeshProUGUI _title;
         private readonly TextMeshProUGUI _subtitle;
-        private readonly List<(GameObject row, TextMeshProUGUI need, TextMeshProUGUI building)> _rows =
-            new List<(GameObject, TextMeshProUGUI, TextMeshProUGUI)>();
+        private readonly List<(GameObject row, Image icon, TextMeshProUGUI need, TextMeshProUGUI building)> _rows =
+            new List<(GameObject, Image, TextMeshProUGUI, TextMeshProUGUI)>();
         private readonly TextMeshProUGUI _note;
         private readonly Button _startWave;
         private readonly TextMeshProUGUI _hint;
@@ -49,6 +58,15 @@ namespace ResortEmpire.UI
             _status = UIFactory.Text("Label", pill.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
             _status.rectTransform.Fill(20, 8, 0, 0);
 
+            // Resort Value: right of the top bar, left of the settings gear. More currencies join to its left later.
+            Image valuePill = UIFactory.Panel("ResortValue", topBar, UIFactory.Paper);
+            _resortValuePill = valuePill.rectTransform;
+            _resortValuePill.At(new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(ResortValueBesideGear, 0f), new Vector2(190f, 28f));
+            TextMeshProUGUI valueLabel = UIFactory.Text("Label", valuePill.transform, GameText.ResortValueLabel, 11, UIFactory.Ink.WithAlpha(0.75f), TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+            valueLabel.rectTransform.Fill(10, 70, 0, 0);
+            _resortValue = UIFactory.Text("Value", valuePill.transform, string.Empty, 14, GreyboxPalette.Primary, TextAlignmentOptions.MidlineRight, FontStyles.Bold);
+            _resortValue.rectTransform.Fill(90, 10, 0, 0);
+
             Image panel = UIFactory.SidePanel("ForecastPanel", sideArea);
             _forecastPanel = panel.gameObject;
 
@@ -61,34 +79,39 @@ namespace ResortEmpire.UI
             {
                 Image row = UIFactory.Panel($"ForecastRow{i}", panel.transform, UIFactory.RowBackground);
                 row.rectTransform.At(new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(10f, -60f - i * 30f), new Vector2(280f, 26f));
+                Image icon = UIFactory.Icon("Icon", row.transform, null, UIFactory.Ink); // before the wave every need uses the same calm color
+                icon.rectTransform.At(new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(8f, 0f), new Vector2(ForecastIconSize, ForecastIconSize));
                 TextMeshProUGUI need = UIFactory.Text("Need", row.transform, string.Empty, 13, UIFactory.Ink, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
-                need.rectTransform.Fill(8, 120, 0, 0);
+                need.rectTransform.Fill(32, 120, 0, 0);
                 TextMeshProUGUI building = UIFactory.Text("Building", row.transform, string.Empty, 11, UIFactory.Ink, TextAlignmentOptions.MidlineRight);
                 building.rectTransform.Fill(110, 8, 0, 0);
-                _rows.Add((row.gameObject, need, building));
+                _rows.Add((row.gameObject, icon, need, building));
             }
 
             _note = UIFactory.Text("Note", panel.transform, string.Empty, 11, UIFactory.Ink.WithAlpha(0.75f), TextAlignmentOptions.TopLeft);
             _note.textWrappingMode = TextWrappingModes.Normal;
             _note.rectTransform.At(new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(12f, 12f), new Vector2(276f, 44f));
 
-            _startWave = UIFactory.Button("StartWaveButton", islandArea, "WELCOME GUESTS", GreyboxPalette.Primary, Color.white, 17, OnStartWave);
+            _startWave = UIFactory.Button("StartWaveButton", islandArea, GameText.WelcomeGuestsLabel, GreyboxPalette.Primary, Color.white, 17, OnStartWave);
             ((RectTransform)_startWave.transform).At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(240f, 46f));
 
-            _hint = UIFactory.Text("Hint", islandArea, "Check what the guests will need. Tap a building to move a Worker.", 11, Color.white, TextAlignmentOptions.Center);
+            _hint = UIFactory.Text("Hint", islandArea, GameText.HomeHint, 11, Color.white, TextAlignmentOptions.Center);
             _hint.rectTransform.At(new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 54f), new Vector2(420f, 16f));
         }
 
         public Button StartWaveButton => _startWave;
+        public RectTransform ForecastPanel => (RectTransform)_forecastPanel.transform;
         public bool ForecastVisible => _forecastPanel.activeSelf;
         public string StatusText => _status.text;
+        public string ResortValueText => _resortValue.text;
+        public RectTransform ResortValuePill => _resortValuePill;
 
         public int VisibleForecastRows
         {
             get
             {
                 int count = 0;
-                foreach ((GameObject row, TextMeshProUGUI _, TextMeshProUGUI _) in _rows)
+                foreach ((GameObject row, Image _, TextMeshProUGUI _, TextMeshProUGUI _) in _rows)
                 {
                     if (row.activeSelf) count++;
                 }
@@ -97,13 +120,21 @@ namespace ResortEmpire.UI
             }
         }
 
+        /// <summary>The icon of forecast row <paramref name="index"/> (Rooms, Drinks, Food in wave 1).</summary>
+        public Image GetForecastIcon(int index) => _rows[index].icon;
+
         public void Refresh(ResortGame game)
         {
             _status.text = GameText.Status(game);
+            string resortValue = GameText.ResortValue(game.ResortValue);
+            if (_resortValue.text != resortValue) _resortValue.text = resortValue;
+            float valueX = _owner.SettingsAvailable ? ResortValueBesideGear : ResortValueBesideSkip;
+            if (!Mathf.Approximately(_resortValuePill.anchoredPosition.x, valueX)) _resortValuePill.anchoredPosition = new Vector2(valueX, 0f);
 
             bool awaiting = game.Phase == GamePhase.AwaitingWave;
             _forecastPanel.SetActive(awaiting);
             _startWave.gameObject.SetActive(awaiting && game.HasNextWave);
+            _startWave.interactable = _owner.IsWaveStartAllowed; // greyed while the tutorial waits for a Worker move
             _hint.gameObject.SetActive(awaiting && game.HasNextWave);
 
             if (awaiting)
@@ -125,9 +156,9 @@ namespace ResortEmpire.UI
                 return;
             }
 
-            _startWave.SetLabel($"WELCOME GUESTS\n<size=65%>Wave {forecast.WaveNumber}</size>");
-            _title.text = $"NEXT: WAVE {forecast.WaveNumber}";
-            _subtitle.text = $"{forecast.Guests} guests are coming";
+            _startWave.SetLabel(GameText.WelcomeGuestsForWave(forecast));
+            _title.text = GameText.ForecastTitle(forecast);
+            _subtitle.text = GameText.ForecastGuests(forecast);
 
             int index = 0;
             foreach (NeedDemand demand in forecast.Demand)
@@ -138,17 +169,18 @@ namespace ResortEmpire.UI
                 BuildingRuntime building = definition != null ? game.GetBuilding(definition.building) : null;
                 bool staffed = building != null && building.HasWorker;
 
-                (GameObject row, TextMeshProUGUI need, TextMeshProUGUI place) = _rows[index];
+                (GameObject row, Image icon, TextMeshProUGUI need, TextMeshProUGUI place) = _rows[index];
                 row.SetActive(true);
-                need.text = $"{GameText.Need(game, demand.Need)}  {demand.Units}";
-                place.text = staffed
-                    ? $"{definition.displayName}: Worker"
-                    : $"<color=#{ColorUtility.ToHtmlStringRGB(GreyboxPalette.Warning)}>{definition?.displayName}: No Worker</color>";
+                icon.sprite = UIFactory.GetNeedIcon(demand.Need);
+                icon.enabled = icon.sprite != null;
+                need.text = GameText.ForecastDemand(game, demand);
+                string staffing = GameText.ForecastStaffing(definition?.displayName, staffed);
+                place.text = staffed ? staffing : GameText.Colored(staffing, GreyboxPalette.Warning);
                 index++;
             }
 
             HideRowsFrom(index);
-            _note.text = "Each number is how many guests will need that service. One building always stays without a Worker.";
+            _note.text = GameText.ForecastNote;
         }
 
         private void HideRowsFrom(int index)

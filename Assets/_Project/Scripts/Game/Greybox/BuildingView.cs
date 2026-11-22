@@ -59,9 +59,6 @@ namespace ResortEmpire.Game
 
         public BuildingId Building => building;
 
-        /// <summary>The building's art sprites (for later per-level art or highlights).</summary>
-        public IReadOnlyList<SpriteRenderer> Art => art;
-
         /// <summary>Seat squares currently shown (OUR-50).</summary>
         public int ShownSeats { get; private set; }
 
@@ -81,6 +78,22 @@ namespace ResortEmpire.Game
         public bool ShowsWorker { get; private set; }
 
         public string StatusText => statusLabel != null ? statusLabel.text : string.Empty;
+
+        /// <summary>Tutorial: where the Worker badge is, in world space (null when the building has no badge).</summary>
+        public Bounds? WorkerBadgeBounds => workerBadge != null ? workerBadge.bounds : (Bounds?)null;
+
+        /// <summary>Tutorial: the building's art and patio plate in world space, the part a tap hits.</summary>
+        public Bounds GetBounds()
+        {
+            var bounds = new Bounds(transform.position, Vector3.zero);
+            if (body != null) bounds.Encapsulate(body.bounds);
+            foreach (SpriteRenderer sprite in art)
+            {
+                if (sprite != null) bounds.Encapsulate(sprite.bounds);
+            }
+
+            return bounds;
+        }
 
         /// <summary>OUR-45: whether a world point is on the building (its art or patio plate), for taps.</summary>
         public bool Contains(Vector2 worldPoint)
@@ -103,22 +116,22 @@ namespace ResortEmpire.Game
         }
 
         /// <param name="seated">Seats to show as taken; null shows the Core's count.</param>
-        public void Refresh(ResortGame game, int? seated = null)
+        /// <param name="waiting">Queue squares to show; null shows the Core's queue.</param>
+        public void Refresh(ResortGame game, int? seated = null, int? waiting = null)
         {
+            // Hidden while its building isn't on the island, and shown again once it is (an unlock, or a new game).
             BuildingRuntime runtime = game.GetBuilding(building);
-            if (runtime == null)
-            {
-                gameObject.SetActive(false);
-                return;
-            }
+            bool isOnIsland = runtime != null;
+            if (gameObject.activeSelf != isOnIsland) gameObject.SetActive(isOnIsland);
+            if (!isOnIsland) return;
 
             body.color = GreyboxPalette.ForBuilding(building);
             nameLabel.text = runtime.Definition.displayName;
 
             ShowState(game.GetBuildingState(building));
             ShowSeats(runtime.Seats, seated ?? game.GetSeatedCount(building));
-            // The queue dots show the Core's queue, the same number as the needs panel (OUR-37).
-            ShowQueue(game.GetNeedStatus(runtime.Need).Waiting);
+            // The queue squares show the guests at the building beyond its seats, the same number as the needs panel (OUR-37).
+            ShowQueue(waiting ?? game.GetNeedStatus(runtime.Need).Waiting);
             ShowWorker(runtime.HasWorker);
         }
 
@@ -224,9 +237,9 @@ namespace ResortEmpire.Game
         {
             ShowsWorker = hasWorker;
             workerBadge.color = hasWorker ? GreyboxPalette.WorkerOn : GreyboxPalette.WorkerOff;
-            workerLabel.text = hasWorker ? "W" : "-";
+            workerLabel.text = hasWorker ? GameText.WorkerBadge : GameText.NoWorkerBadge;
 
-            statusLabel.text = hasWorker ? string.Empty : "No Worker";
+            statusLabel.text = hasWorker ? string.Empty : GameText.NoWorkerLabel;
             statusLabel.color = GreyboxPalette.Warning;
             if (statusBacking != null) statusBacking.enabled = !hasWorker;
         }

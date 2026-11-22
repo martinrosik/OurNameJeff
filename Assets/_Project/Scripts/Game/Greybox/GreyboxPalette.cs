@@ -16,6 +16,11 @@ namespace ResortEmpire.Game
         public static readonly Color Warning = new Color(0.90f, 0.25f, 0.22f);
         public static readonly Color Premium = new Color(1f, 0.90f, 0.62f);
 
+        // Wave evaluation: earned and not-yet-earned rating stars on Wave Complete, plus the earned stars' outline.
+        public static readonly Color StarEarned = new Color(1f, 0.78f, 0.16f);
+        public static readonly Color StarEarnedOutline = new Color(0.86f, 0.52f, 0.06f);
+        public static readonly Color StarEmpty = new Color(0.74f, 0.80f, 0.86f);
+
         public static readonly Color WorkerOn = new Color(0.18f, 0.70f, 0.38f);
         public static readonly Color WorkerOff = new Color(0.62f, 0.62f, 0.62f);
         public static readonly Color Guest = new Color(0.25f, 0.20f, 0.45f);
@@ -24,6 +29,14 @@ namespace ResortEmpire.Game
         // OUR-38 / OUR-39: building state glows (the Build doc names no colours; red = queue growing, green = catching up).
         public static readonly Color BottleneckGlow = new Color(0.90f, 0.25f, 0.22f, 0.55f);
         public static readonly Color RecoveringGlow = new Color(0.18f, 0.70f, 0.38f, 0.5f);
+
+        // Needs panel icons, served counts and bars (Figma S2): green = all served or catching up, amber = guests still being served, red = queue growing.
+        public static readonly Color NeedGood = new Color32(0x10, 0xB9, 0x81, 0xFF);
+        public static readonly Color NeedInProgress = new Color32(0xF5, 0x9E, 0x0B, 0xFF);
+        public static readonly Color NeedBottleneck = new Color32(0xEF, 0x44, 0x44, 0xFF);
+
+        /// <summary>Wave Complete: Wave Satisfaction is green from 4 stars, amber below. Never red: no "you lost" tone (UI doc S4).</summary>
+        public static Color ForRating(WaveRating rating) => rating >= WaveRating.FourStars ? NeedGood : NeedInProgress;
 
         public static Color ForBuilding(BuildingId building)
         {

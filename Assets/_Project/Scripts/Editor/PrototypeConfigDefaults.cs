@@ -24,9 +24,43 @@ namespace ResortEmpire.Editor
                 waveTimer = 90f, // OUR-34: arrival phase (Build doc §4.8 wave_timer)
                 bottleneckThreshold = 4, // OUR-38: Build doc §4.8 bottleneck_threshold
                 bottleneckHysteresis = 3f, // OUR-38 / OUR-39: Build doc §4.8 bottleneck_hysteresis_s
+                suddenRushEnabled = true, // Sudden rush, Build doc §4.6
+                suddenRushWave = 2, // Build doc §4.8 rush_wave
+                suddenRushChance = 0.5f, // not in the Build doc: later waves may have one too
+                suddenRushTime = 45f, // Build doc §4.8 rush_time_s
+                suddenRushUnits = 6, // Build doc §4.8 rush_units
+                suddenRushDuration = 10f, // Build doc §4.8 rush_duration_s
                 serviceTime = 12f, // OUR-46: Build doc §4.8 service_time, 12 s per guest per seat (design-conflicts row 10)
                 utilizationStaffed = 1f, // OUR-46
-                utilizationEmpty = 0.33f, // OUR-47: 0.33 s ÷ 0.33 = 1 s per guest without a Worker
+                utilizationEmpty = 0.33f, // OUR-47: 12 s ÷ 0.33 ≈ 36 s per guest without a Worker
+                growthIfNotHarder = 0.125f, // Wave difficulty: waves 4 and 7 grow 12.5 % over the wave before them (not in the Build doc, TUNING)
+            };
+
+            // Wave evaluation: Build doc §4.4 / §4.8 (patience_grace, patience_floor_after, unit_floor, wave_floor,
+            // rating_thresholds, ocean_view_satisfaction_weight).
+            config.satisfaction = new SatisfactionSettings
+            {
+                patienceGrace = 10f,
+                patienceFloorAfter = 30f,
+                unitFloor = 25f,
+                waveFloor = 40f,
+                ratingThresholds = new[] { 40f, 55f, 70f, 80f, 90f, 100f },
+                oceanViewSatisfactionWeight = 1.5f,
+            };
+
+            // Resort Value: grows after each wave by its rating, never drops (GDD §7.6). Not in the Build doc: placeholder
+            // amounts, TUNING. 1 and 2 stars add 0.
+            config.resortValue = new ResortValueSettings
+            {
+                startingValue = 0,
+                gainPerRating = new[] { 0, 0, 50, 100, 150, 200 },
+            };
+
+            // Wave Complete breakdown (UI doc S4, AC6). Not in the Build doc: placeholders, TUNING.
+            config.breakdown = new WaveBreakdownSettings
+            {
+                wentGreatSatisfaction = 80f,
+                noWorkerShare = 0.5f,
             };
 
             config.needs = new List<NeedDefinition>

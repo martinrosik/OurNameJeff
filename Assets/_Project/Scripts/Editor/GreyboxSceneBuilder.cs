@@ -16,12 +16,14 @@ namespace ResortEmpire.Editor
     /// dock, guest boat and the buildings from the config, with placeholder Kenney art and their Worker and
     /// capacity indicators, and the walking guests) and UI. Re-running it replaces those three roots, so local tweaks to them are lost.
     /// Move things by hand afterwards if you like; the code doesn't depend on positions.
+    /// It then rebuilds Tutorial.unity from the result (<see cref="TutorialSceneBuilder"/>).
     /// </summary>
     public static class GreyboxSceneBuilder
     {
         private const string GameScenePath = "Assets/_Project/Scenes/Game.unity";
         private const string KenneyCity = "Assets/_Project/Art/Kenney/City/";
         private const string KenneyPirate = "Assets/_Project/Art/Kenney/Pirate/";
+        private const string NeedIcons = "Assets/_Project/Art/Icons/";
 
         // Island centre sits left of the screen centre: the side panel covers the right ~35 %.
         private static readonly Vector3 IslandCentre = new Vector3(-3.6f, -0.2f, 0f);
@@ -44,9 +46,14 @@ namespace ResortEmpire.Editor
         [MenuItem("Resort Empire/Greybox/Rebuild Greybox Scene", priority = 301)]
         public static void Build()
         {
-            if (GreyboxArtGenerator.Square == null || GreyboxArtGenerator.Rounded == null || GreyboxArtGenerator.Circle == null)
+            if (GreyboxArtGenerator.Square == null || GreyboxArtGenerator.Rounded == null || GreyboxArtGenerator.Circle == null || GreyboxArtGenerator.Star == null)
             {
                 GreyboxArtGenerator.Generate();
+            }
+
+            if (GreyboxArtGenerator.SettingsIcon == null)
+            {
+                GreyboxArtGenerator.GenerateSettingsIcon();
             }
 
             if (string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(PrototypeConfigDefaults.AssetPath, AssetPathToGUIDOptions.OnlyExistingAssets)))
@@ -86,10 +93,18 @@ namespace ResortEmpire.Editor
             var ui = uiObject.AddComponent<GreyboxUI>();
             SetReference(ui, "controller", controller);
             SetReference(ui, "roundedSprite", GreyboxArtGenerator.Rounded);
+            SetReference(ui, "starSprite", GreyboxArtGenerator.Star);
+            SetReference(ui, "roomsIcon", LoadNeedIcon(NeedId.Rooms));
+            SetReference(ui, "drinksIcon", LoadNeedIcon(NeedId.Drinks));
+            SetReference(ui, "foodIcon", LoadNeedIcon(NeedId.Food));
+            SetReference(ui, "settingsIcon", GreyboxArtGenerator.SettingsIcon);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("Greybox scene rebuilt.");
+
+            // The tutorial plays on a copy of this island; rebuild it so the two stay the same.
+            TutorialSceneBuilder.Build();
         }
 
         private static void BuildIsland(GameController controller, GameConfig config)
@@ -300,6 +315,15 @@ namespace ResortEmpire.Editor
                 case BuildingId.Bungalows: return new Vector3(-2.0f, -1.9f, 0f);
                 default: return Vector3.zero;
             }
+        }
+
+        /// <summary>A need's icon for the side panels, named like <c>Icon_Need_Food.png</c> (see CONTRIBUTING asset naming).</summary>
+        private static Sprite LoadNeedIcon(NeedId need)
+        {
+            string path = $"{NeedIcons}Icon_Need_{need}.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null) Debug.LogWarning($"Missing sprite {path}");
+            return sprite;
         }
 
         /// <summary>A sprite from an asset path, scaled to <paramref name="width"/> world units.</summary>

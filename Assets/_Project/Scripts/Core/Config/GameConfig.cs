@@ -13,6 +13,15 @@ namespace ResortEmpire.Core
     {
         public WaveSettings wave = new WaveSettings();
 
+        [Tooltip("Wave Satisfaction and the star rating on Wave Complete (Build doc §4.4).")]
+        public SatisfactionSettings satisfaction = new SatisfactionSettings();
+
+        [Tooltip("Resort Value: the status number that grows after each wave by its rating and never drops (GDD §7.6).")]
+        public ResortValueSettings resortValue = new ResortValueSettings();
+
+        [Tooltip("Wave Complete breakdown: which needs went great and what the others need (UI doc S4, AC6).")]
+        public WaveBreakdownSettings breakdown = new WaveBreakdownSettings();
+
         [Tooltip("One entry per need.")]
         public List<NeedDefinition> needs = new List<NeedDefinition>();
 
@@ -51,8 +60,5 @@ namespace ResortEmpire.Core
 
             return null;
         }
-
-        /// <summary>Errors that make the config unusable. Empty list = valid.</summary>
-        public List<string> Validate() => GameConfigValidator.Validate(this);
     }
 }

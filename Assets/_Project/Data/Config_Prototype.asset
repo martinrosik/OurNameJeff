@@ -20,6 +20,32 @@ MonoBehaviour:
     utilizationEmpty: 0.33
     bottleneckThreshold: 4
     bottleneckHysteresis: 3
+    growthIfNotHarder: 0.125
+    suddenRushEnabled: 1
+    suddenRushWave: 2
+    suddenRushChance: 0.5
+    suddenRushTime: 45
+    suddenRushUnits: 6
+    suddenRushDuration: 10
+  satisfaction:
+    patienceGrace: 10
+    patienceFloorAfter: 30
+    unitFloor: 25
+    waveFloor: 40
+    ratingThresholds:
+    - 40
+    - 55
+    - 70
+    - 80
+    - 90
+    - 100
+    oceanViewSatisfactionWeight: 1.5
+  resortValue:
+    startingValue: 0
+    gainPerRating: 0000000000000000320000006400000096000000c8000000i
+  breakdown:
+    wentGreatSatisfaction: 80
+    noWorkerShare: 0.5
   needs:
   - need: 0
     displayName: Rooms
