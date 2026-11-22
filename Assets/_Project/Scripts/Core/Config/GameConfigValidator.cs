@@ -41,6 +41,7 @@ namespace ResortEmpire.Core
 
             ValidateSatisfaction(config.satisfaction, errors);
             ValidateResortValue(config.resortValue, errors);
+            if (config.breakdown == null) errors.Add("Wave Complete breakdown settings are missing.");
             ValidateNeeds(config, errors);
             ValidateBuildings(config, errors);
 

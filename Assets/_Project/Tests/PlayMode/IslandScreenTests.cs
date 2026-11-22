@@ -841,8 +841,14 @@ namespace ResortEmpire.Tests
 
             Assert.IsTrue(_ui.WaveComplete.IsVisible);
             Assert.AreEqual("WAVE 1 COMPLETE", _ui.WaveComplete.TitleText);
-            Assert.AreEqual("Wave 1 has ended. Well done!", _ui.WaveComplete.MessageText);
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.MessageText, "The PERFORMANCE part replaces the message.");
+            Assert.IsTrue(_ui.WaveComplete.PerformanceVisible);
             Assert.AreEqual("12/12", _ui.WaveComplete.StatText);
+            Assert.AreEqual(GreyboxPalette.NeedGood, _ui.WaveComplete.GuestsServedColor, "Everyone is served: green.");
+            Assert.AreEqual(GreyboxPalette.NeedGood, _ui.WaveComplete.SatisfactionColor, "Perfect: green.");
+            Assert.AreEqual("Rooms, Drinks & Food went great!", _ui.WaveComplete.WentGreatText);
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.NeedsWorkerText, "Only the lines that apply.");
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.NeedsCapacityText);
             Assert.IsTrue(_ui.WaveComplete.StarsVisible);
             Assert.AreEqual(5, _ui.WaveComplete.EarnedStars, "Nobody was delayed in wave 1: Perfect shows all five stars.");
             Assert.IsTrue(_ui.WaveComplete.PerfectVisible, "PERFECT! tells Perfect apart from five stars.");
@@ -862,6 +868,10 @@ namespace ResortEmpire.Tests
             Assert.AreEqual(result.Satisfaction, shown, 1e-6, "The live bar counted the slow service like Wave Complete.");
             Assert.IsFalse(_ui.WaveComplete.PerfectVisible);
             Assert.AreEqual($"{(int)System.Math.Floor(result.Satisfaction + 1e-6)}%", _ui.WaveComplete.SatisfactionText);
+            Assert.AreEqual(GreyboxPalette.ForRating(result.Rating), _ui.WaveComplete.SatisfactionColor);
+            Assert.AreEqual("Rooms & Drinks went great!", _ui.WaveComplete.WentGreatText);
+            Assert.AreEqual("Food needs a Worker", _ui.WaveComplete.NeedsWorkerText, "The Restaurant had no Worker all wave.");
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.NeedsCapacityText);
         }
 
         [UnityTest]
@@ -1120,6 +1130,9 @@ namespace ResortEmpire.Tests
             Assert.IsFalse(_ui.WaveComplete.StarsVisible, "No single wave's rating after the last wave.");
             Assert.IsFalse(_ui.WaveComplete.PerfectVisible);
             Assert.AreEqual(string.Empty, _ui.WaveComplete.SatisfactionText);
+            Assert.AreEqual("Every wave of guests had a great stay!", _ui.WaveComplete.MessageText);
+            Assert.IsFalse(_ui.WaveComplete.PerformanceVisible);
+            Assert.AreEqual(string.Empty, _ui.WaveComplete.WentGreatText, "No single wave's breakdown after the last wave.");
             StringAssert.Contains("PLAY AGAIN", _ui.WaveComplete.ContinueButton.GetComponentInChildren<TMPro.TMP_Text>().text);
 
             _ui.WaveComplete.ContinueButton.onClick.Invoke();

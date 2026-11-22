@@ -43,6 +43,9 @@ MonoBehaviour:
   resortValue:
     startingValue: 0
     gainPerRating: 0000000000000000320000006400000096000000c8000000i
+  breakdown:
+    wentGreatSatisfaction: 80
+    noWorkerShare: 0.5
   needs:
   - need: 0
     displayName: Rooms

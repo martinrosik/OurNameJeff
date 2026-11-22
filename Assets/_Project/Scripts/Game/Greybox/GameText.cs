@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ResortEmpire.Core;
 using UnityEngine;
 
@@ -232,8 +233,6 @@ namespace ResortEmpire.Game
 
         public static string WaveCompleteTitle(int waveNumber) => $"WAVE {waveNumber} COMPLETE";
 
-        public static string WaveCompleteMessage(WaveResult result) => $"Wave {result.WaveNumber} has ended. Well done!";
-
         /// <summary>Everyone is always served (WR4), so both numbers are the wave's guests.</summary>
         public static string GuestsServed(WaveResult result) => $"{result.Guests}/{result.Guests}";
 
@@ -243,6 +242,28 @@ namespace ResortEmpire.Game
 
         /// <summary>"88%". Rounded down, so the shown % never reaches a star threshold the wave missed.</summary>
         public static string WaveSatisfaction(WaveResult result) => $"{(int)Math.Floor(result.Satisfaction + 1e-6)}%";
+
+        // Wave evaluation details: the PERFORMANCE part of Wave Complete and its "What went well / Needs improvement" lines.
+        public const string PerformanceLabel = "PERFORMANCE";
+
+        /// <summary>"Rooms & Drinks went great!"</summary>
+        public static string WentGreat(ResortGame game, IReadOnlyList<NeedId> needs) => $"{JoinNeeds(game, needs)} went great!";
+
+        /// <summary>"Food needs a Worker", or "Drinks & Food need Workers".</summary>
+        public static string NeedsWorker(ResortGame game, IReadOnlyList<NeedId> needs) =>
+            needs.Count == 1 ? $"{JoinNeeds(game, needs)} needs a Worker" : $"{JoinNeeds(game, needs)} need Workers";
+
+        /// <summary>"Food capacity needs improvement".</summary>
+        public static string NeedsCapacity(ResortGame game, IReadOnlyList<NeedId> needs) => $"{JoinNeeds(game, needs)} capacity needs improvement";
+
+        /// <summary>"Food", "Rooms & Drinks", "Rooms, Drinks & Food".</summary>
+        private static string JoinNeeds(ResortGame game, IReadOnlyList<NeedId> needs)
+        {
+            var names = new List<string>();
+            foreach (NeedId need in needs) names.Add(Need(game, need));
+            if (names.Count <= 1) return names.Count == 1 ? names[0] : string.Empty;
+            return $"{string.Join(", ", names.GetRange(0, names.Count - 1))} & {names[names.Count - 1]}";
+        }
 
         // Resort Value: the status number in the top bar, and what a wave added on Wave Complete.
         public const string ResortValueLabel = "Resort Value";
