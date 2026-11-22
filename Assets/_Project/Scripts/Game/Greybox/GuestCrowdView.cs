@@ -30,8 +30,8 @@ namespace ResortEmpire.Game
     /// </para>
     /// <para>
     /// <b>Mood bubbles:</b> when a guest walks out of a building, a bubble above it shows for a moment how that visit
-    /// went: a smile, a flat face or a frown, from how long it waited for its seat (<see cref="WaveSatisfaction.GetGuestMood"/>,
-    /// the same thresholds Wave Satisfaction uses). Approved by the designer (docs/design-conflicts.md, row 12).
+    /// went: a smile, a flat face or a frown, from its delay there, the wait for a seat plus slow service without a
+    /// Worker (<see cref="WaveSatisfaction.GetGuestMood"/>, the same thresholds Wave Satisfaction uses). Approved by the designer (docs/design-conflicts.md, row 12).
     /// Each such visit also feeds the live satisfaction bar and its comment on the Wave Needs Panel
     /// (<see cref="TryGetShownSatisfaction"/>, <see cref="LatestFeedback"/>; design-conflicts row 4).
     /// </para>
@@ -81,7 +81,7 @@ namespace ResortEmpire.Game
         private readonly List<Walker> _walkers = new List<Walker>();
         private readonly Stack<SpriteRenderer> _pool = new Stack<SpriteRenderer>();
         private readonly Stack<SpriteRenderer> _bubblePool = new Stack<SpriteRenderer>();
-        private readonly List<(NeedId Need, double WaitSeconds)> _shownWaits = new List<(NeedId Need, double WaitSeconds)>();
+        private readonly List<(NeedId Need, double DelaySeconds)> _shownDelays = new List<(NeedId Need, double DelaySeconds)>();
         private SatisfactionSettings _satisfaction;
         private readonly Dictionary<NeedId, Building> _buildings = new Dictionary<NeedId, Building>();
         private readonly System.Random _random = new System.Random(34);
@@ -167,7 +167,7 @@ namespace ResortEmpire.Game
         public GuestFeedback LatestFeedback { get; private set; }
 
         /// <summary>Visits the player has seen end this wave (guests that walked out of a building).</summary>
-        public int ShownVisitCount => _shownWaits.Count;
+        public int ShownVisitCount => _shownDelays.Count;
 
         /// <summary>
         /// Wave Satisfaction of the visits the player has seen end so far (the same formula as <see cref="WaveSatisfaction"/>),
@@ -177,8 +177,8 @@ namespace ResortEmpire.Game
         public bool TryGetShownSatisfaction(out double satisfaction)
         {
             satisfaction = 0;
-            if (_shownWaits.Count == 0 || _satisfaction == null) return false;
-            satisfaction = WaveSatisfaction.Calculate(_shownWaits, _satisfaction);
+            if (_shownDelays.Count == 0 || _satisfaction == null) return false;
+            satisfaction = WaveSatisfaction.Calculate(_shownDelays, _satisfaction);
             return true;
         }
 
@@ -283,18 +283,18 @@ namespace ResortEmpire.Game
         }
 
         /// <summary>
-        /// The guest has just walked out of the building of <paramref name="visit"/>: a bubble above it shows how long
-        /// it waited for its seat there.
+        /// The guest has just walked out of the building of <paramref name="visit"/>: a bubble above it shows how much
+        /// its visit there was delayed (waiting for a seat, or slow service without a Worker).
         /// </summary>
         private void ShowMood(Walker walker, GuestVisit visit)
         {
             if (_wave == null || _satisfaction == null) return;
-            if (!_wave.TryGetWaitTime(visit.Need, visit.Unit, out double wait)) return;
+            if (!_wave.TryGetDelay(visit.Need, visit.Unit, out double delay)) return;
 
             HideBubble(walker);
-            walker.Mood = WaveSatisfaction.GetGuestMood(wait, _satisfaction);
-            _shownWaits.Add((visit.Need, wait));
-            LatestFeedback = new GuestFeedback(visit.Need, walker.Mood, _shownWaits.Count);
+            walker.Mood = WaveSatisfaction.GetGuestMood(delay, _satisfaction);
+            _shownDelays.Add((visit.Need, delay));
+            LatestFeedback = new GuestFeedback(visit.Need, walker.Mood, _shownDelays.Count);
             walker.Bubble = TakeBubble();
             walker.Bubble.sprite = MoodBubbleArt.Get(walker.Mood);
             walker.Bubble.sortingOrder = sortingOrder + 1; // above every guest
@@ -606,7 +606,7 @@ namespace ResortEmpire.Game
 
             _walkers.Clear();
             _buildings.Clear();
-            _shownWaits.Clear();
+            _shownDelays.Clear();
             LatestFeedback = null;
             _plan = null;
             _nextGuest = 0;

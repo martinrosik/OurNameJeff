@@ -12,8 +12,8 @@ namespace ResortEmpire.Core
     /// runs out. Arrivals are processed in time order from a precomputed schedule, so the result never depends on
     /// the frame rate. Only needs with a building on the island spawn (WR9). An arriving unit takes a free seat,
     /// or waits in the building's FIFO queue (the arrival time is kept for waiting time and satisfaction later).
-    /// Each unit's wait (arrival → seated) is recorded when it sits down (<see cref="GetWaitTimes"/>) for the Wave
-    /// Satisfaction on Wave Complete.
+    /// Each unit's delay (arrival → served, minus a staffed service time, so a slow building counts too) is recorded
+    /// when it is served (<see cref="GetDelays"/>) for the Wave Satisfaction on Wave Complete.
     /// </para>
     /// <para>
     /// <b>OUR-41 drain:</b> after the arrival timer nobody new comes, but nobody leaves either (WR4): every unit
@@ -104,7 +104,8 @@ namespace ResortEmpire.Core
             WaveTimer = waveTimer;
             foreach (NeedDemand demand in forecast.Demand)
             {
-                var queue = new NeedQueue(demand.Need, demand.Units, waveTimer, seatsForNeed(demand.Need));
+                double normalServiceSeconds = settings.GetServiceSeconds(true);
+                var queue = new NeedQueue(demand.Need, demand.Units, waveTimer, seatsForNeed(demand.Need), normalServiceSeconds);
                 _needs[demand.Need] = queue;
                 _needList.Add(queue);
             }
@@ -239,22 +240,23 @@ namespace ResortEmpire.Core
         }
 
         /// <summary>
-        /// Wave Satisfaction: how long each unit of a need that has sat down waited (arrival → seated, in seconds), in
-        /// the order they sat down. Empty for a need that isn't in this wave.
+        /// Wave Satisfaction: the delay of each unit of a need that has been served (arrival → served, minus a staffed
+        /// service time, in seconds), in the order they were served. Empty for a need that isn't in this wave.
         /// </summary>
-        public IReadOnlyList<double> GetWaitTimes(NeedId need) =>
-            _needs.TryGetValue(need, out NeedQueue queue) ? queue.WaitTimes : (IReadOnlyList<double>)Array.Empty<double>();
+        public IReadOnlyList<double> GetDelays(NeedId need) =>
+            _needs.TryGetValue(need, out NeedQueue queue) ? queue.Delays : (IReadOnlyList<double>)Array.Empty<double>();
 
         /// <summary>
-        /// Guest mood bubbles: how long unit <paramref name="unit"/> (0-based, arrival order) of a need waited for its
-        /// seat. Units sit down first come, first served (a queue only forms while every seat is taken), so the n-th
-        /// wait recorded is unit n's. False while the unit hasn't sat down yet, or for a need that isn't in this wave.
+        /// Guest mood bubbles: the delay of unit <paramref name="unit"/> (0-based, arrival order) of a need: its wait for
+        /// a seat plus however much longer than a staffed service its service took. Units sit down first come, first
+        /// served and every seated unit progresses at the same speed, so the n-th delay recorded is unit n's. False
+        /// while the unit hasn't been served yet, or for a need that isn't in this wave.
         /// </summary>
-        public bool TryGetWaitTime(NeedId need, int unit, out double waitSeconds)
+        public bool TryGetDelay(NeedId need, int unit, out double delaySeconds)
         {
-            waitSeconds = 0;
-            if (unit < 0 || !_needs.TryGetValue(need, out NeedQueue queue) || unit >= queue.WaitTimes.Count) return false;
-            waitSeconds = queue.WaitTimes[unit];
+            delaySeconds = 0;
+            if (unit < 0 || !_needs.TryGetValue(need, out NeedQueue queue) || unit >= queue.Delays.Count) return false;
+            delaySeconds = queue.Delays[unit];
             return true;
         }
 
@@ -413,11 +415,12 @@ namespace ResortEmpire.Core
 
         private sealed class NeedQueue
         {
-            public NeedQueue(NeedId need, int total, double waveTimer, int seats)
+            public NeedQueue(NeedId need, int total, double waveTimer, int seats, double normalServiceSeconds)
             {
                 Need = need;
                 Total = Math.Max(0, total);
                 Seats = Math.Max(0, seats);
+                _normalServiceSeconds = Math.Max(0, normalServiceSeconds);
                 for (int k = 0; k < Total; k++)
                 {
                     // Steady rate demand ÷ waveTimer: unit k arrives at (k + 1) × waveTimer ÷ demand.
@@ -492,10 +495,16 @@ namespace ResortEmpire.Core
             /// <summary>Work left (1 - progress) of each seated unit, in the order they sat down.</summary>
             private readonly List<double> _remaining = new List<double>();
 
-            /// <summary>Wave Satisfaction: waiting time (arrival → seated) of every unit that has sat down.</summary>
-            private readonly List<double> _waitTimes = new List<double>();
+            /// <summary>Arrival time of each seated unit, in the same order as <see cref="_remaining"/>.</summary>
+            private readonly List<double> _seatedArrivalTimes = new List<double>();
 
-            public IReadOnlyList<double> WaitTimes => _waitTimes;
+            /// <summary>A staffed building's service time: only the time beyond it counts as a delay.</summary>
+            private readonly double _normalServiceSeconds;
+
+            /// <summary>Wave Satisfaction: delay (arrival → served, minus a staffed service time) of every unit that has been served.</summary>
+            private readonly List<double> _delays = new List<double>();
+
+            public IReadOnlyList<double> Delays => _delays;
 
             /// <summary>Wave time of this need's next arrival or service end (infinity when there is none).</summary>
             public double NextEventTime(double now)
@@ -528,9 +537,7 @@ namespace ResortEmpire.Core
                 {
                     if (Speed > 0 && _remaining[i] <= TimeEpsilon * Speed)
                     {
-                        _remaining.RemoveAt(i);
-                        Served++;
-                        SeatNextInLine(now);
+                        Serve(i, now);
                         any = true;
                     }
                     else
@@ -551,10 +558,18 @@ namespace ResortEmpire.Core
             public bool FinishService(double now)
             {
                 if (_remaining.Count == 0) return false;
-                _remaining.RemoveAt(0);
+                Serve(0, now);
+                return true;
+            }
+
+            /// <summary>The unit on <paramref name="seat"/> is done: its delay is recorded and the next in line sits down.</summary>
+            private void Serve(int seat, double now)
+            {
+                _delays.Add(Math.Max(0, now - _seatedArrivalTimes[seat] - _normalServiceSeconds));
+                _remaining.RemoveAt(seat);
+                _seatedArrivalTimes.RemoveAt(seat);
                 Served++;
                 SeatNextInLine(now);
-                return true;
             }
 
             private void Arrive(double time)
@@ -563,7 +578,7 @@ namespace ResortEmpire.Core
                 if (_remaining.Count < Seats)
                 {
                     _remaining.Add(1);
-                    _waitTimes.Add(0); // a free seat: no waiting (AC1b)
+                    _seatedArrivalTimes.Add(time); // a free seat: no waiting (AC1b)
                 }
                 else
                 {
@@ -577,7 +592,7 @@ namespace ResortEmpire.Core
                 {
                     double arrivalTime = Waiting.Dequeue();
                     _remaining.Add(1);
-                    _waitTimes.Add(Math.Max(0, now - arrivalTime));
+                    _seatedArrivalTimes.Add(arrivalTime);
                 }
             }
         }

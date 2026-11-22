@@ -6,8 +6,9 @@ so whoever picks them up starts from the right numbers. All numbers are TUNING a
 ## Wave Satisfaction and stars (Build doc §4.4)
 
 - Satisfaction is collected during the wave. The Wave Needs Panel shows it live from the guests that walked out (design-conflicts row 4); the rating is given on Wave Complete.
-- Per need unit: waiting ≤ `patience_grace` 10 s → 100 %. It then falls linearly to `unit_floor` 25 % at 30 s, and
-  stays at 25 % after that.
+- Per need unit: delay ≤ `patience_grace` 10 s → 100 %. It then falls linearly to `unit_floor` 25 % at 30 s, and
+  stays at 25 % after that. Delay = arrival → served minus a staffed service time, so slow service without a Worker
+  counts too (design-conflicts row 13).
 - Wave Satisfaction = max(`wave_floor` 40 %, weighted average). Ocean View weighs 1.5 (others 1.0).
 - Stars: 1★ 40 % · 2★ 55 % · 3★ 70 % · 4★ 80 % · 5★ 90 % · Perfect 100 %. The worst result is 1★, never zero.
 - Hard rule WR1: `unit_floor < wave_floor < 3★ threshold`.

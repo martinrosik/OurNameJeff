@@ -86,10 +86,11 @@ namespace ResortEmpire.Tests
         [Test]
         public void AWellHandledWaveAddsItsGainOnWaveComplete()
         {
+            _config.wave.utilizationEmpty = _config.wave.utilizationStaffed; // no slow building, so nobody is delayed
             var game = new ResortGame(_config);
 
             WaveResult result = PlayWave(game);
-            Assert.AreEqual(WaveRating.Perfect, result.Rating, "Nobody waits in wave 1 with the starting Workers.");
+            Assert.AreEqual(WaveRating.Perfect, result.Rating, "Nobody is delayed in wave 1.");
             Assert.AreEqual(200, result.ResortValueGain);
             Assert.AreEqual(0, game.ResortValue, "Not before Wave Complete.");
 
@@ -137,6 +138,7 @@ namespace ResortEmpire.Tests
         public void TheGainCanBeTunedInTheConfig()
         {
             Settings.gainPerRating = new[] { 1, 2, 3, 4, 5, 999 };
+            _config.wave.utilizationEmpty = _config.wave.utilizationStaffed; // no slow building, so wave 1 is Perfect
             var game = new ResortGame(_config);
 
             PlayAndContinue(game);

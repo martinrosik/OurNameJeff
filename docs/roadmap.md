@@ -33,7 +33,7 @@ Decision Log, User Story Walkthrough, Project rules).
   buildings (need, 3 levels of seats, unlock gate + cost), the 8-wave table and the Sudden rush event.
 - **Needs model**: steady arrivals (`demand_total ÷ wave_timer`), seats per building, service as progress whose
   speed changes immediately when a Worker moves or a boost starts/ends (§4.4).
-- **Satisfaction**: per-unit wait (arrival → seated), linear falloff, `unit_floor` and `wave_floor`, weighted
+- **Satisfaction**: per-unit delay (arrival → served minus a staffed service time, design-conflicts row 13), linear falloff, `unit_floor` and `wave_floor`, weighted
   average with the Ocean View weight, rating tiers (§4.4).
 - **Need states**: OK / BOTTLENECK / RECOVERING / SATISFIED / LOCKED, using queue length (not seated guests),
   threshold and hysteresis.

@@ -4,8 +4,9 @@ using System.Collections.Generic;
 namespace ResortEmpire.Core
 {
     /// <summary>
-    /// Wave Satisfaction (Build doc §4.4): computed once at the end of the wave from how long every need unit waited
-    /// (arrival → seated), never from the state at the end. During the wave the Wave Needs Panel shows the same
+    /// Wave Satisfaction (Build doc §4.4): computed once at the end of the wave from every need unit's delay
+    /// (arrival → served, minus a staffed service time, so slow service counts too; design-conflicts row 13), never
+    /// from the state at the end. During the wave the Wave Needs Panel shows the same
     /// formula over the guests that have walked out so far (designer decision, docs/design-conflicts.md row 4).
     /// <code>
     /// Wave Satisfaction = max(waveFloor, Σ(unit contribution × need weight) ÷ Σ need weight)
@@ -20,42 +21,42 @@ namespace ResortEmpire.Core
         /// One unit's contribution in %: 100 up to patienceGrace, then linearly down to unitFloor at patienceFloorAfter,
         /// and unitFloor after that.
         /// </summary>
-        public static double GetUnitContribution(double waitSeconds, SatisfactionSettings settings)
+        public static double GetUnitContribution(double delaySeconds, SatisfactionSettings settings)
         {
-            if (waitSeconds <= settings.patienceGrace + Tolerance) return 100.0;
-            if (waitSeconds >= settings.patienceFloorAfter) return settings.unitFloor;
+            if (delaySeconds <= settings.patienceGrace + Tolerance) return 100.0;
+            if (delaySeconds >= settings.patienceFloorAfter) return settings.unitFloor;
 
-            double falloff = (waitSeconds - settings.patienceGrace) / (settings.patienceFloorAfter - settings.patienceGrace);
+            double falloff = (delaySeconds - settings.patienceGrace) / (settings.patienceFloorAfter - settings.patienceGrace);
             return 100.0 - falloff * (100.0 - settings.unitFloor);
         }
 
         /// <summary>
-        /// Guest mood bubbles: the face a guest shows for one visit, from the same wait and the same thresholds as its
+        /// Guest mood bubbles: the face a guest shows for one visit, from the same delay and the same thresholds as its
         /// contribution: full marks up to patienceGrace, the floor from patienceFloorAfter, neutral in between.
         /// </summary>
-        public static GuestMood GetGuestMood(double waitSeconds, SatisfactionSettings settings)
+        public static GuestMood GetGuestMood(double delaySeconds, SatisfactionSettings settings)
         {
-            if (waitSeconds <= settings.patienceGrace + Tolerance) return GuestMood.Happy;
-            if (waitSeconds >= settings.patienceFloorAfter - Tolerance) return GuestMood.Unhappy;
+            if (delaySeconds <= settings.patienceGrace + Tolerance) return GuestMood.Happy;
+            if (delaySeconds >= settings.patienceFloorAfter - Tolerance) return GuestMood.Unhappy;
             return GuestMood.Neutral;
         }
 
-        /// <summary>Wave Satisfaction in % (waveFloor–100) of every unit seated so far in <paramref name="wave"/>.</summary>
+        /// <summary>Wave Satisfaction in % (waveFloor–100) of every unit served so far in <paramref name="wave"/>.</summary>
         public static double Calculate(WaveSimulation wave, SatisfactionSettings settings) =>
-            Calculate(GetAllWaits(wave), settings);
+            Calculate(GetAllDelays(wave), settings);
 
         /// <summary>
-        /// Wave Satisfaction in % (waveFloor–100) of the given visits (need and wait in seconds). The live satisfaction
+        /// Wave Satisfaction in % (waveFloor–100) of the given visits (need and delay in seconds). The live satisfaction
         /// bar uses it for the guests that have walked out so far; once everyone has, it equals the wave's result.
         /// </summary>
-        public static double Calculate(IEnumerable<(NeedId Need, double WaitSeconds)> waits, SatisfactionSettings settings)
+        public static double Calculate(IEnumerable<(NeedId Need, double DelaySeconds)> delays, SatisfactionSettings settings)
         {
             double weightedSum = 0;
             double weightTotal = 0;
-            foreach ((NeedId need, double wait) in waits)
+            foreach ((NeedId need, double delay) in delays)
             {
                 double weight = settings.GetNeedWeight(need);
-                weightedSum += GetUnitContribution(wait, settings) * weight;
+                weightedSum += GetUnitContribution(delay, settings) * weight;
                 weightTotal += weight;
             }
 
@@ -64,13 +65,13 @@ namespace ResortEmpire.Core
             return Math.Max(settings.waveFloor, average);
         }
 
-        private static IEnumerable<(NeedId, double)> GetAllWaits(WaveSimulation wave)
+        private static IEnumerable<(NeedId, double)> GetAllDelays(WaveSimulation wave)
         {
             foreach (NeedId need in wave.Needs)
             {
-                foreach (double wait in wave.GetWaitTimes(need))
+                foreach (double delay in wave.GetDelays(need))
                 {
-                    yield return (need, wait);
+                    yield return (need, delay);
                 }
             }
         }
