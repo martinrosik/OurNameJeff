@@ -56,6 +56,13 @@ namespace ResortEmpire.Editor
                 gainPerRating = new[] { 0, 0, 50, 100, 150, 200 },
             };
 
+            // Wave Complete breakdown (UI doc S4, AC6). Not in the Build doc: placeholders, TUNING.
+            config.breakdown = new WaveBreakdownSettings
+            {
+                wentGreatSatisfaction = 80f,
+                noWorkerShare = 0.5f,
+            };
+
             config.needs = new List<NeedDefinition>
             {
                 Need(NeedId.Rooms, "Rooms"),

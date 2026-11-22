@@ -138,6 +138,12 @@ namespace ResortEmpire.Core
         public double GetBottleneckSeconds(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.BottleneckSeconds : 0;
 
         /// <summary>
+        /// Wave Complete breakdown: seconds of wave time the need's building served slower than a staffed one, i.e.
+        /// without a Worker (0 for a need that isn't in this wave).
+        /// </summary>
+        public double GetSlowServiceSeconds(NeedId need) => _needs.TryGetValue(need, out NeedQueue queue) ? queue.SlowServiceSeconds : 0;
+
+        /// <summary>
         /// OUR-39: re-reads the service speeds and re-checks every state now. Called right after a Worker move, so
         /// "catching up" shows in the same moment as the player's decision (AC2), not on the next tick.
         /// </summary>
@@ -520,9 +526,13 @@ namespace ResortEmpire.Core
                 return next;
             }
 
+            /// <summary>Wave Complete breakdown: wave time this building served slower than a staffed one (no Worker).</summary>
+            public double SlowServiceSeconds { get; private set; }
+
             public void Progress(double seconds)
             {
                 if (seconds <= 0 || Speed <= 0) return;
+                if (Speed * _normalServiceSeconds < 1 - TimeEpsilon) SlowServiceSeconds += seconds;
                 double work = seconds * Speed;
                 for (int i = 0; i < _remaining.Count; i++) _remaining[i] -= work;
             }

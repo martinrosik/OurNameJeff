@@ -11,9 +11,10 @@ namespace ResortEmpire.Core
     {
         public WaveResult(
             int waveIndex, int guests, int unitsServed, int totalUnits, double duration, double satisfaction, WaveRating rating,
-            int resortValueGain = 0)
+            int resortValueGain = 0, WaveBreakdown breakdown = null)
         {
             ResortValueGain = Math.Max(0, resortValueGain);
+            Breakdown = breakdown ?? WaveBreakdown.Empty;
             WaveIndex = waveIndex;
             Guests = guests;
             UnitsServed = unitsServed;
@@ -45,5 +46,8 @@ namespace ResortEmpire.Core
 
         /// <summary>Resort Value this wave added, from its rating. 0 or more: Resort Value never drops.</summary>
         public int ResortValueGain { get; }
+
+        /// <summary>Wave Complete breakdown: which needs went great and what the others need (UI doc S4, AC6).</summary>
+        public WaveBreakdown Breakdown { get; }
     }
 }

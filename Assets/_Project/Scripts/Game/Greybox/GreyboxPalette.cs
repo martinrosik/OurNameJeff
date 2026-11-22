@@ -35,6 +35,9 @@ namespace ResortEmpire.Game
         public static readonly Color NeedInProgress = new Color32(0xF5, 0x9E, 0x0B, 0xFF);
         public static readonly Color NeedBottleneck = new Color32(0xEF, 0x44, 0x44, 0xFF);
 
+        /// <summary>Wave Complete: Wave Satisfaction is green from 4 stars, amber below. Never red: no "you lost" tone (UI doc S4).</summary>
+        public static Color ForRating(WaveRating rating) => rating >= WaveRating.FourStars ? NeedGood : NeedInProgress;
+
         public static Color ForBuilding(BuildingId building)
         {
             switch (building)

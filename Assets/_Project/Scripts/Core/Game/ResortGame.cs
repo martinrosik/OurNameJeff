@@ -264,7 +264,8 @@ namespace ResortEmpire.Core
                 WaveRating rating = WaveSatisfaction.GetRating(satisfaction, Config.satisfaction);
                 LastWaveResult = new WaveResult(
                     CurrentWave.WaveIndex, CurrentWave.GuestCount, CurrentWave.TotalServed, CurrentWave.TotalUnits, WaveTime,
-                    satisfaction, rating, Config.resortValue?.GetGain(rating) ?? 0);
+                    satisfaction, rating, Config.resortValue?.GetGain(rating) ?? 0,
+                    WaveBreakdown.Create(CurrentWave, WaveTime, Config.satisfaction, Config.breakdown));
                 SetPhase(GamePhase.WaveResolving);
             }
         }
