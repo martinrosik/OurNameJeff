@@ -5,15 +5,16 @@ namespace ResortEmpire.Core
 {
     /// <summary>
     /// Wave Satisfaction and rating (Build doc §4.4, §4.8 parameter table). Defaults are the Build doc values; tune
-    /// them in the config asset, not here. All values are percent (0–100) or seconds of waiting (arrival → seated).
+    /// them in the config asset, not here. All values are percent (0–100) or seconds of delay (arrival → served,
+    /// minus a staffed service time).
     /// </summary>
     [Serializable]
     public sealed class SatisfactionSettings
     {
-        [Tooltip("patience_grace: a guest who waited (arrival → seated) up to this many seconds counts 100 % (doc: 10 s, TUNING 3–30). Service time never counts as waiting.")]
+        [Tooltip("patience_grace: a guest delayed up to this many seconds counts 100 % (doc: 10 s, TUNING 3–30). Delay = arrival → served, minus a staffed service time, so a wait for a seat and slow service without a Worker both count.")]
         [Min(0f)] public float patienceGrace = 10f;
 
-        [Tooltip("patience_floor_after: from this many seconds of waiting a guest counts only unitFloor; between patienceGrace and this it falls linearly (doc: 30 s, TUNING 15–60).")]
+        [Tooltip("patience_floor_after: from this many seconds of delay a guest counts only unitFloor; between patienceGrace and this it falls linearly (doc: 30 s, TUNING 15–60).")]
         [Min(0f)] public float patienceFloorAfter = 30f;
 
         [Tooltip("unit_floor: the least one guest ever counts, in % (doc: 25 %, TUNING 0–40). WR1: unitFloor < waveFloor < the 3-star threshold.")]

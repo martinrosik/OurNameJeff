@@ -57,7 +57,7 @@ namespace ResortEmpire.Game
 
         /// <summary>
         /// Live satisfaction bar: what a guest says as it walks out of a building, from its mood (the same one as its
-        /// bubble): glad when it sat down quickly, annoyed when it waited long. <paramref name="number"/> picks one of
+        /// bubble): glad when it was served quickly, annoyed when it waited long or the service was slow. <paramref name="number"/> picks one of
         /// a few lines, so guests in a row don't all say the same.
         /// </summary>
         public static string GuestFeedback(ResortGame game, NeedId need, GuestMood mood, int number)

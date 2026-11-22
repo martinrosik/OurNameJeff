@@ -46,7 +46,8 @@ three places: the settings class (with the doc default), `PrototypeConfigDefault
   (k + 1) × 90 ÷ demand. Needs without a building don't spawn.
 - **Seats and service (OUR-46, OUR-47):** a building serves `seats` units at once. Service is progress at speed
   `utilization ÷ serviceTime` (12 s; utilization 1.0 with a Worker, 0.33 without). A speed change applies at once to
-  guests already seated. Waiting = arrival → seated.
+  guests already seated. Waiting = arrival → seated. Satisfaction counts the delay instead: arrival → served minus
+  a staffed service time, so slow service counts too (`WaveSimulation.GetDelays`, design-conflicts row 13).
 - **Drain and end (OUR-41, OUR-35, OUR-40):** the 90 s timer closes arrivals, never the wave. The wave ends when
   every queue and seat is empty. Nobody leaves.
 - **Need states (OUR-38, OUR-39):**

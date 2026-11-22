@@ -7,13 +7,13 @@ namespace ResortEmpire.Core
     /// </summary>
     public enum GuestMood
     {
-        /// <summary>Found a seat within patienceGrace: counts 100 %.</summary>
+        /// <summary>Served with at most patienceGrace of delay: counts 100 %.</summary>
         Happy,
 
-        /// <summary>Waited longer than patienceGrace but less than patienceFloorAfter: counts less.</summary>
+        /// <summary>Delayed longer than patienceGrace but less than patienceFloorAfter: counts less.</summary>
         Neutral,
 
-        /// <summary>Waited patienceFloorAfter or longer: counts only unitFloor.</summary>
+        /// <summary>Delayed patienceFloorAfter or longer: counts only unitFloor.</summary>
         Unhappy,
     }
 }

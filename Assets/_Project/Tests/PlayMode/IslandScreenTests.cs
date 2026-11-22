@@ -22,6 +22,7 @@ namespace ResortEmpire.Tests
         private IslandView _island;
 
         private float _savedServiceTime;
+        private float _savedUtilizationEmpty;
         private bool _savedSuddenRush;
         private int _savedSuddenRushWave;
 
@@ -32,6 +33,9 @@ namespace ResortEmpire.Tests
         /// the real asset, so <see cref="RestoreServiceTime"/> puts the value back.
         /// </summary>
         private void PauseService() => Game.Config.wave.serviceTime = 1_000_000f;
+
+        /// <summary>A building without a Worker serves at full speed, so nobody is delayed by slow service (restored in TearDown).</summary>
+        private void TurnOffSlowService() => Game.Config.wave.utilizationEmpty = Game.Config.wave.utilizationStaffed;
 
         /// <summary>The icon, the bar and the state label share the state's color (Figma S2).</summary>
         private static void AssertRowColor(NeedRowView row, Color expected)
@@ -56,6 +60,7 @@ namespace ResortEmpire.Tests
             Assert.IsNotNull(_island, "Game scene has no IslandView.");
             _controller.SimulationSpeed = 0f; // tests drive time themselves
             _savedServiceTime = Game.Config.wave.serviceTime;
+            _savedUtilizationEmpty = Game.Config.wave.utilizationEmpty;
 
             // A Sudden rush adds guests; tests that count arrivals need the plain wave. The Sudden rush tests turn it
             // back on. The config is the real asset, so TearDown restores the values.
@@ -69,6 +74,7 @@ namespace ResortEmpire.Tests
         {
             if (_controller == null) return;
             _controller.Game.Config.wave.serviceTime = _savedServiceTime;
+            _controller.Game.Config.wave.utilizationEmpty = _savedUtilizationEmpty;
             _controller.Game.Config.wave.suddenRushEnabled = _savedSuddenRush;
             _controller.Game.Config.wave.suddenRushWave = _savedSuddenRushWave;
         }
@@ -821,6 +827,7 @@ namespace ResortEmpire.Tests
         [UnityTest]
         public IEnumerator OUR40_TheOverlayAppearsOnlyOnceTheWaveIsComplete()
         {
+            TurnOffSlowService();
             yield return null;
             Assert.IsFalse(_ui.WaveComplete.IsVisible, "Not before the wave.");
 
@@ -837,10 +844,24 @@ namespace ResortEmpire.Tests
             Assert.AreEqual("Wave 1 has ended. Well done!", _ui.WaveComplete.MessageText);
             Assert.AreEqual("12/12", _ui.WaveComplete.StatText);
             Assert.IsTrue(_ui.WaveComplete.StarsVisible);
-            Assert.AreEqual(5, _ui.WaveComplete.EarnedStars, "Nobody waited in wave 1: Perfect shows all five stars.");
+            Assert.AreEqual(5, _ui.WaveComplete.EarnedStars, "Nobody was delayed in wave 1: Perfect shows all five stars.");
             Assert.IsTrue(_ui.WaveComplete.PerfectVisible, "PERFECT! tells Perfect apart from five stars.");
             Assert.AreEqual("100%", _ui.WaveComplete.SatisfactionText);
             Assert.IsFalse(_ui.Hud.StartWaveButton.gameObject.activeInHierarchy, "Continue is the only main button.");
+        }
+
+        [UnityTest]
+        public IEnumerator WaveEvaluation_SlowServiceWithoutAWorkerIsNotPerfectOnTheBarOrTheCard()
+        {
+            Game.StartWave();
+            yield return FinishStartedWave();
+
+            WaveResult result = Game.LastWaveResult;
+            Assert.Less(result.Rating, WaveRating.Perfect, "The Restaurant has no Worker, so its guests were served slowly.");
+            Assert.IsTrue(_island.Guests.TryGetShownSatisfaction(out double shown));
+            Assert.AreEqual(result.Satisfaction, shown, 1e-6, "The live bar counted the slow service like Wave Complete.");
+            Assert.IsFalse(_ui.WaveComplete.PerfectVisible);
+            Assert.AreEqual($"{(int)System.Math.Floor(result.Satisfaction + 1e-6)}%", _ui.WaveComplete.SatisfactionText);
         }
 
         [UnityTest]
@@ -885,7 +906,7 @@ namespace ResortEmpire.Tests
 
             WaveResult result = Game.LastWaveResult;
             int gain = Game.Config.resortValue.GetGain(result.Rating);
-            Assert.Greater(gain, 0, "Wave 1 handled with the starting Workers is Perfect.");
+            Assert.Greater(gain, 0, "Wave 1 handled with the starting Workers earns Resort Value.");
             Assert.AreEqual(gain, result.ResortValueGain);
             Assert.AreEqual($"+{GameText.ResortValue(gain)}", _ui.WaveComplete.ResortValueGainText);
             Assert.AreEqual(GameText.ResortValue(start + gain), _ui.Hud.ResortValueText);
@@ -975,9 +996,9 @@ namespace ResortEmpire.Tests
             Assert.AreEqual("WAVE 2 COMPLETE", _ui.WaveComplete.TitleText);
             Assert.AreEqual("18/18", _ui.WaveComplete.StatText);
             Assert.AreEqual(2, Game.LastWaveResult.WaveNumber, "The card shows wave 2's own evaluation.");
-            Assert.AreEqual(WaveRating.FiveStars, Game.LastWaveResult.Rating, "Wave 2 left alone: a short Food queue, just under Perfect.");
-            Assert.AreEqual(5, _ui.WaveComplete.EarnedStars);
-            Assert.IsFalse(_ui.WaveComplete.PerfectVisible, "Five stars without PERFECT! is not a Perfect wave.");
+            Assert.Less(Game.LastWaveResult.Rating, WaveRating.Perfect, "Wave 2 left alone: a Food queue and a slow Restaurant without a Worker.");
+            Assert.AreEqual((int)Game.LastWaveResult.Rating, _ui.WaveComplete.EarnedStars);
+            Assert.IsFalse(_ui.WaveComplete.PerfectVisible, "Without PERFECT! it is not a Perfect wave.");
             Assert.AreEqual($"{(int)System.Math.Floor(Game.LastWaveResult.Satisfaction + 1e-6)}%", _ui.WaveComplete.SatisfactionText);
         }
 
